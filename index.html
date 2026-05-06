@@ -89,5 +89,45 @@
     </div>
 
     <script src="src/main.js" defer></script>
+
+    <!-- ══ DEBUG PANEL — remove before shipping ══ -->
+    <style>
+      #dbg {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.75); color: #0f0;
+        font: 11px/1.5 monospace; padding: 6px 10px;
+        z-index: 9999; pointer-events: none;
+        white-space: pre-wrap;
+      }
+    </style>
+    <div id="dbg">⏳ waiting for a-scene…</div>
+    <script>
+      const dbg = document.getElementById("dbg");
+      const log = (msg) => { dbg.textContent = msg; console.log("[DBG]", msg); };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const scene  = document.querySelector("a-scene");
+        const anchor = document.getElementById("forehead-anchor");
+
+        if (!scene)  { log("❌ No <a-scene> found!"); return; }
+        if (!anchor) { log("❌ No #forehead-anchor found!"); return; }
+
+        log("✅ DOM ready — scene + anchor found\n⏳ waiting for MindAR events…");
+
+        scene.addEventListener("arReady",  () => log("✅ arReady — MindAR started, camera live"));
+        scene.addEventListener("arError",  (e) => log("❌ arError — " + (e.detail || "camera denied/unavailable")));
+
+        anchor.addEventListener("targetFound", () => log("🎯 targetFound — face detected at anchor 10!"));
+        anchor.addEventListener("targetLost",  () => log("😶 targetLost — face left frame"));
+
+        // Log a-scene loaded state
+        if (scene.hasLoaded) {
+          log("✅ DOM ready — scene already loaded\n⏳ waiting for MindAR…");
+        } else {
+          scene.addEventListener("loaded", () => log("✅ a-scene loaded\n⏳ waiting for arReady…"));
+        }
+      });
+    </script>
+    <!-- ══ END DEBUG ══ -->
   </body>
 </html>
