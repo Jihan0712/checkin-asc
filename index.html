@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="JollibeeAR – put a Jollibee emote on your forehead!" />
     <title>JollibeeAR</title>
@@ -40,7 +43,9 @@
       <div id="flash"></div>
 
       <!-- A-Frame AR scene -->
-      <a-scene mindar-face embedded
+      <!-- facingMode: user = front camera on mobile -->
+      <a-scene mindar-face="facingMode: user"
+               embedded
                color-space="sRGB"
                renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true"
                vr-mode-ui="enabled: false"
