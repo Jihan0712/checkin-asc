@@ -51,23 +51,12 @@
                vr-mode-ui="enabled: false"
                device-orientation-permission-ui="enabled: false">
 
-        <a-assets>
-          <!-- Head occluder (makes tracking more stable) -->
-          <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
+        <a-assets timeout="5000">
           <img id="bee-tex"   src="assets/emotes/bee.png"   crossorigin="anonymous" />
           <img id="jolli-tex" src="assets/emotes/Jolli.png" crossorigin="anonymous" />
         </a-assets>
 
         <a-camera active="false" position="0 0 0"></a-camera>
-
-        <!-- Head occluder anchor — same as working example -->
-        <a-entity mindar-face-target="anchorIndex: 168">
-          <a-gltf-model mindar-face-occluder
-                        position="0 -0.3 0.15"
-                        rotation="0 0 0"
-                        scale="0.065 0.065 0.065"
-                        src="#headModel"></a-gltf-model>
-        </a-entity>
 
         <!-- Forehead emote — anchor 10 = top of forehead -->
         <a-entity id="forehead-anchor" mindar-face-target="anchorIndex: 10">
@@ -92,7 +81,7 @@
 
     <!-- ══ DEBUG PANEL — remove before shipping ══ -->
     <style>
-      #dbg {
+      #debug-panel {
         position: fixed; bottom: 0; left: 0; right: 0;
         background: rgba(0,0,0,0.75); color: #0f0;
         font: 11px/1.5 monospace; padding: 6px 10px;
@@ -100,10 +89,10 @@
         white-space: pre-wrap;
       }
     </style>
-    <div id="dbg">⏳ waiting for a-scene…</div>
+    <div id="debug-panel">⏳ waiting for a-scene…</div>
     <script>
-      const dbg = document.getElementById("dbg");
-      const log = (msg) => { dbg.textContent = msg; console.log("[DBG]", msg); };
+      const dbgEl = document.getElementById("debug-panel");
+      const log = (msg) => { dbgEl.textContent = msg; console.log("[DBG]", msg); };
 
       document.addEventListener("DOMContentLoaded", () => {
         const scene  = document.querySelector("a-scene");
@@ -112,7 +101,7 @@
         if (!scene)  { log("❌ No <a-scene> found!"); return; }
         if (!anchor) { log("❌ No #forehead-anchor found!"); return; }
 
-        log("✅ DOM ready — scene + anchor found\n⏳ waiting for MindAR events…");
+        log("✅ DOM ready\n⏳ waiting for a-scene loaded…");
 
         scene.addEventListener("arReady",  () => log("✅ arReady — MindAR started, camera live"));
         scene.addEventListener("arError",  (e) => log("❌ arError — " + (e.detail || "camera denied/unavailable")));
@@ -120,9 +109,8 @@
         anchor.addEventListener("targetFound", () => log("🎯 targetFound — face detected at anchor 10!"));
         anchor.addEventListener("targetLost",  () => log("😶 targetLost — face left frame"));
 
-        // Log a-scene loaded state
         if (scene.hasLoaded) {
-          log("✅ DOM ready — scene already loaded\n⏳ waiting for MindAR…");
+          log("✅ a-scene already loaded\n⏳ waiting for arReady…");
         } else {
           scene.addEventListener("loaded", () => log("✅ a-scene loaded\n⏳ waiting for arReady…"));
         }
