@@ -35,16 +35,17 @@
         <button id="snap-btn" title="Take screenshot">📸</button>
       </div>
 
-      <div id="no-face" class="hidden">
+      <!-- starts visible — becomes hidden when face is found -->
+      <div id="no-face">
         <span>😶</span>
-        <p>Point your camera at a face</p>
+        <p>Loading… point your camera at a face</p>
       </div>
 
       <div id="flash"></div>
 
       <!-- A-Frame AR scene -->
-      <!-- facingMode: user = front camera on mobile -->
-      <a-scene mindar-face="facingMode: user"
+      <!-- uiLoading/uiError: use MindAR's built-in loading + error overlays -->
+      <a-scene mindar-face="uiLoading: yes; uiError: yes"
                embedded
                color-space="sRGB"
                renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true"

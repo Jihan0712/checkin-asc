@@ -76,7 +76,7 @@ body {
   transition: opacity 0.4s;
 }
 #no-face span { font-size: 3.5rem; }
-#no-face p    { font-size: 0.95rem; letter-spacing: 0.03em; text-align: center; }
+#no-face p    { font-size: 0.95rem; letter-spacing: 0.03em; text-align: center; padding: 0 24px; }
 #no-face.hidden { opacity: 0; pointer-events: none; }
 
 /* ── Top bar ───────────────────────────────────────── */

@@ -27,34 +27,28 @@ document.addEventListener("DOMContentLoaded", () => {
     jolliImg.setAttribute("visible", String(!showBee));
   }, SWAP_INTERVAL);
 
-  // ── MindAR scene lifecycle ─────────────────────────────────────────────────
-  // arReady fires when MindAR got the camera and started the detection loop
-  scene.addEventListener("arReady", () => {
-    noFace.classList.remove("hidden");
-  });
-
-  // arError fires when camera access failed (denied, no device, not HTTPS)
+  // ── MindAR error handler ───────────────────────────────────────────────────
+  // arError = camera permission denied OR no camera found
   scene.addEventListener("arError", () => {
     noFace.querySelector("span").textContent = "⚠️";
     noFace.querySelector("p").textContent =
-      "Camera access failed.\n1. Allow camera permission in the browser\n2. Reload the page";
-    noFace.classList.remove("hidden");
+      "Camera access failed. Allow camera permission and reload.";
   });
 
   // ── Face-anchor tracking events ────────────────────────────────────────────
   anchor.addEventListener("targetFound", () => {
     isTracking = true;
     noFace.classList.add("hidden");
-    // Restore whichever image is currently "active"
     beeImg.setAttribute("visible",   String(showBee));
     jolliImg.setAttribute("visible", String(!showBee));
   });
 
   anchor.addEventListener("targetLost", () => {
     isTracking = false;
-    // Hide both images — never show without active tracking
     beeImg.setAttribute("visible",   "false");
     jolliImg.setAttribute("visible", "false");
+    noFace.querySelector("span").textContent = "😶";
+    noFace.querySelector("p").textContent = "Point your camera at a face";
     noFace.classList.remove("hidden");
   });
 
