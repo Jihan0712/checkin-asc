@@ -16,6 +16,13 @@
     <link rel="stylesheet" href="src/style.css" />
   </head>
   <body>
+    <!-- Shown only when not on HTTPS/localhost -->
+    <div id="insecure-banner" style="display:none;position:fixed;inset:0;z-index:999;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:sans-serif;">
+      <span style="font-size:3rem;">🔒</span>
+      <strong style="font-size:1.2rem;">Camera requires a secure connection</strong>
+      <p style="opacity:.8;max-width:320px;">Open this page through <b>Live Server</b> in VS Code<br>(right-click index.html → Open with Live Server)<br>or deploy to Cloudflare Pages for HTTPS.</p>
+    </div>
+
     <!-- MindAR mounts its video + canvas here -->
     <div id="container"></div>
 
@@ -31,6 +38,7 @@
       <button id="snap-btn" title="Take screenshot">📸</button>
     </div>
 
-    <script type="module" src="src/main.js"></script>
+    <!-- defer (not module) so it works on localhost without CORS errors -->
+    <script src="src/main.js" defer></script>
   </body>
 </html>

@@ -1,3 +1,13 @@
+// ── Secure-context guard ──────────────────────────────────────────────────────
+// Camera (getUserMedia) only works on HTTPS or localhost.
+// If running as file:// the banner is shown and we stop here.
+if (!window.isSecureContext) {
+  document.getElementById("insecure-banner").style.display = "flex";
+  // Hide the rest of the UI so nothing looks broken underneath
+  document.getElementById("no-face").style.display = "none";
+  throw new Error("Not a secure context — camera blocked.");
+}
+
 // ── Globals from MindAR CDN bundle ───────────────────────────────────────────
 const { MindARThree } = window.MINDAR.FACE;
 const { THREE } = window;
