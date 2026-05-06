@@ -14,7 +14,7 @@
     <link rel="manifest" href="manifest.json" />
 
     <!-- A-Frame + MindAR face bundle -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
     <link rel="stylesheet" href="src/style.css" />
@@ -56,7 +56,7 @@
           <img id="jolli-tex" src="assets/emotes/Jolli.png" crossorigin="anonymous" />
         </a-assets>
 
-        <a-camera active="false" position="0 0 0"></a-camera>
+        <a-camera active="false" position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <!-- Forehead emote — anchor 10 = top of forehead -->
         <a-entity id="forehead-anchor" mindar-face-target="anchorIndex: 10">
