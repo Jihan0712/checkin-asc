@@ -28,11 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }, SWAP_INTERVAL);
 
   // ── MindAR error handler ───────────────────────────────────────────────────
-  // arError = camera permission denied OR no camera found
-  scene.addEventListener("arError", () => {
+  scene.addEventListener("arReady",  () => console.log("[AR] arReady — MindAR started"));
+  scene.addEventListener("arError",  (e) => {
+    console.error("[AR] arError", e.detail || e);
     noFace.querySelector("span").textContent = "⚠️";
-    noFace.querySelector("p").textContent =
-      "Camera access failed. Allow camera permission and reload.";
+    noFace.querySelector("p").textContent = "Camera access failed. Allow camera permission and reload.";
   });
 
   // ── Face-anchor tracking events ────────────────────────────────────────────
