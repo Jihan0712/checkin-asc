@@ -14,12 +14,33 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── AR container ──────────────────────────────────── */
-#container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
+/* ── AR container (A-Frame embedded fills this) ────── */
+.ar-container {
+  overflow: hidden;
+  position: absolute;
+  width: 100%;
+  height: 100%;
 }
+
+/* ── Insecure-context banner (hidden by default) ───── */
+#insecure-banner {
+  display: none; /* JS sets to flex only when needed */
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: #111;
+  color: #fff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  font-family: sans-serif;
+}
+#insecure-banner span   { font-size: 3rem; }
+#insecure-banner strong { font-size: 1.2rem; }
+#insecure-banner p      { opacity: .8; max-width: 320px; line-height: 1.6; }
 
 /* ── No-face overlay ───────────────────────────────── */
 #no-face {
@@ -37,7 +58,7 @@ html, body {
 }
 #no-face span { font-size: 3.5rem; }
 #no-face p    { font-size: 0.95rem; letter-spacing: 0.03em; }
-#no-face.hidden { opacity: 0; }
+#no-face.hidden { opacity: 0; pointer-events: none; }
 
 /* ── Top bar ───────────────────────────────────────── */
 #top-bar {

@@ -10,35 +10,68 @@
     <!-- PWA manifest -->
     <link rel="manifest" href="manifest.json" />
 
-    <!-- MindAR face bundle (includes Three.js r128) -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"></script>
+    <!-- A-Frame + MindAR face bundle -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
     <link rel="stylesheet" href="src/style.css" />
   </head>
   <body>
-    <!-- Shown only when not on HTTPS/localhost -->
-    <div id="insecure-banner" style="display:none;position:fixed;inset:0;z-index:999;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:sans-serif;">
-      <span style="font-size:3rem;">🔒</span>
-      <strong style="font-size:1.2rem;">Camera requires a secure connection</strong>
-      <p style="opacity:.8;max-width:320px;">Open this page through <b>Live Server</b> in VS Code<br>(right-click index.html → Open with Live Server)<br>or deploy to Cloudflare Pages for HTTPS.</p>
+    <div class="ar-container">
+
+      <!-- Insecure-context banner: shown by JS when not HTTPS/localhost -->
+      <div id="insecure-banner">
+        <span>🔒</span>
+        <strong>Camera requires a secure connection</strong>
+        <p>Open via <b>Live Server</b> in VS Code<br>(right-click index.html → Open with Live Server)<br>or deploy to Vercel for HTTPS.</p>
+      </div>
+
+      <!-- UI overlays -->
+      <div id="top-bar">
+        <span id="app-title">JollibeeAR</span>
+        <button id="snap-btn" title="Take screenshot">📸</button>
+      </div>
+
+      <div id="no-face" class="hidden">
+        <span>😶</span>
+        <p>Point your camera at a face</p>
+      </div>
+
+      <div id="flash"></div>
+
+      <!-- A-Frame AR scene -->
+      <a-scene mindar-face embedded
+               color-space="sRGB"
+               renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true"
+               vr-mode-ui="enabled: false"
+               device-orientation-permission-ui="enabled: false">
+
+        <a-assets>
+          <img id="bee-tex"   src="assets/emotes/bee.png"   crossorigin="anonymous" />
+          <img id="jolli-tex" src="assets/emotes/Jolli.png" crossorigin="anonymous" />
+        </a-assets>
+
+        <a-camera active="false" position="0 0 0"></a-camera>
+
+        <!-- Forehead emote — anchor 10 = top of forehead -->
+        <a-entity id="forehead-anchor" mindar-face-target="anchorIndex: 10">
+          <a-image id="bee-img"
+                   src="#bee-tex"
+                   position="0 0 0.1"
+                   width="0.5" height="0.5"
+                   transparent="true"
+                   visible="true"></a-image>
+          <a-image id="jolli-img"
+                   src="#jolli-tex"
+                   position="0 0 0.1"
+                   width="0.5" height="0.5"
+                   transparent="true"
+                   visible="false"></a-image>
+        </a-entity>
+
+      </a-scene>
     </div>
 
-    <!-- MindAR mounts its video + canvas here -->
-    <div id="container"></div>
-
-    <!-- No-face overlay -->
-    <div id="no-face">
-      <span>😶</span>
-      <p>Point your camera at a face</p>
-    </div>
-
-    <!-- Top bar -->
-    <div id="top-bar">
-      <span id="app-title">JollibeeAR</span>
-      <button id="snap-btn" title="Take screenshot">📸</button>
-    </div>
-
-    <!-- defer (not module) so it works on localhost without CORS errors -->
     <script src="src/main.js" defer></script>
   </body>
 </html>
