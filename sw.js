@@ -12,7 +12,7 @@ self.addEventListener('fetch', (e) => {
     fetch(e.request).then((res) => {
       const h = new Headers(res.headers);
       h.set('Cross-Origin-Opener-Policy',   'same-origin');
-      h.set('Cross-Origin-Embedder-Policy', 'require-corp');
+      h.set('Cross-Origin-Embedder-Policy', 'credentialless');
       h.set('Cross-Origin-Resource-Policy', 'cross-origin');
       return new Response(res.body, {
         status:     res.status,
