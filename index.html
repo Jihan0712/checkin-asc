@@ -159,7 +159,7 @@
         background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
         z-index: 100;
       }
-      #app-title img { height: 48px; width: auto; display: block; }
+      #app-title img { height: 24px; width: auto; display: block; }
       /* ── Bottom bar ── */
       #bottom-bar {
         position: fixed;
@@ -414,45 +414,36 @@
           return compCanvas;
         }
 
-        // Draw src into dest rect using object-fit:cover cropping
-        function drawCover(src, dx, dy, dw, dh) {
-          var sw = src.videoWidth  || src.naturalWidth  || src.width  || 0;
-          var sh = src.videoHeight || src.naturalHeight || src.height || 0;
-          if (!sw || !sh) { compCtx.drawImage(src, dx, dy, dw, dh); return; }
-          var srcRatio  = sw / sh;
-          var destRatio = dw / dh;
-          var sx, sy, sW, sH;
-          if (srcRatio > destRatio) {
-            // source is wider — crop left/right
-            sH = sh; sW = sh * destRatio;
-            sx = (sw - sW) / 2; sy = 0;
-          } else {
-            // source is taller — crop top/bottom
-            sW = sw; sH = sw / destRatio;
-            sx = 0; sy = (sh - sH) / 2;
+        // Draw src into dest rect using object-fit:cover cropping (used for GL canvas sizing check)
+        function ensureCompCanvas() {
+          var gl = getGlCanvas();
+          if (!gl) return null;
+          var w = gl.width  || gl.offsetWidth;
+          var h = gl.height || gl.offsetHeight;
+          if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
+            compCanvas = document.createElement('canvas');
+            compCanvas.width  = w;
+            compCanvas.height = h;
+            compCtx = compCanvas.getContext('2d');
           }
-          compCtx.drawImage(src, sx, sy, sW, sH, dx, dy, dw, dh);
+          return compCanvas;
         }
 
         function drawComposite() {
-          var gl    = getGlCanvas();
-          var video = getVideoEl();
+          var gl = getGlCanvas();
           if (!compCanvas || !gl) return;
           var w = compCanvas.width;
           var h = compCanvas.height;
           compCtx.clearRect(0, 0, w, h);
 
-          // Draw camera feed with cover-crop so it fills the portrait canvas without stretch
-          if (video && video.readyState >= 2) {
-            compCtx.save();
-            compCtx.translate(w, 0);
-            compCtx.scale(-1, 1);
-            drawCover(video, 0, 0, w, h);
-            compCtx.restore();
-          }
-
-          // Draw AR overlay
+          // MindAR applies CSS scaleX(-1) on the canvas element for display.
+          // Raw pixel data is unflipped, so we must mirror it ourselves to match
+          // what the user sees on screen. This applies to both front and back cameras.
+          compCtx.save();
+          compCtx.translate(w, 0);
+          compCtx.scale(-1, 1);
           compCtx.drawImage(gl, 0, 0, w, h);
+          compCtx.restore();
 
           // Draw header at exactly the same position/size as seen on screen
           if (headerImg.complete && headerImg.naturalWidth > 0) {
