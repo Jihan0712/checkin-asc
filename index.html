@@ -387,13 +387,10 @@
         // Track which camera is active for correct mirroring
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
 
-        // MindAR applies CSS scaleX(-1) to the <video> element for all cameras.
-        // Back camera: override that CSS mirror on the video only.
-        // The GL canvas is left untouched — MindAR renders it in un-mirrored space.
+        // MindAR always renders both video and GL in mirrored (selfie) space.
+        // Back camera: flip the whole container so both layers un-mirror together on screen.
         if (currentFacing === 'environment') {
-          var backCamStyle = document.createElement('style');
-          backCamStyle.textContent = '.example-container video { transform: none !important; }';
-          document.head.appendChild(backCamStyle);
+          document.querySelector('.example-container').style.transform = 'scaleX(-1)';
         }
 
         // Preload header image so it is ready when compositing
@@ -457,24 +454,35 @@
           var h = compCanvas.height;
           compCtx.clearRect(0, 0, w, h);
 
-          // For front camera the raw video is un-mirrored (camera space).
-          // Flip only the video so it appears as a selfie mirror view.
-          // The GL canvas is NOT flipped — MindAR already bakes the mirror
-          // into the WebGL rendering so its pixels are in screen-correct orientation.
-          var needFlip = (currentFacing !== 'environment');
-          compCtx.save();
-          if (needFlip) {
+          if (currentFacing === 'environment') {
+            // Back camera capture:
+            // Raw video pixels are un-mirrored (camera space) — draw as-is.
+            // Raw GL pixels are in MindAR's mirrored space — flip them so the
+            // capture matches the un-mirrored screen view (whole-container flip).
+            if (video && video.readyState >= 2) {
+              drawCover(video, 0, 0, w, h);
+            }
+            if (gl) {
+              compCtx.save();
+              compCtx.translate(w, 0);
+              compCtx.scale(-1, 1);
+              compCtx.drawImage(gl, 0, 0, w, h);
+              compCtx.restore();
+            }
+          } else {
+            // Front camera capture:
+            // Raw video pixels are un-mirrored — flip them for selfie mirror view.
+            // Raw GL pixels are in MindAR's mirrored space — draw as-is.
+            compCtx.save();
             compCtx.translate(w, 0);
             compCtx.scale(-1, 1);
-          }
-          if (video && video.readyState >= 2) {
-            drawCover(video, 0, 0, w, h);
-          }
-          compCtx.restore();
-
-          // AR overlay drawn as-is (already in screen-correct / mirrored space)
-          if (gl) {
-            compCtx.drawImage(gl, 0, 0, w, h);
+            if (video && video.readyState >= 2) {
+              drawCover(video, 0, 0, w, h);
+            }
+            compCtx.restore();
+            if (gl) {
+              compCtx.drawImage(gl, 0, 0, w, h);
+            }
           }
 
           // Header baked at its exact on-screen position
