@@ -389,8 +389,13 @@
 
         // MindAR always renders both video and GL in mirrored (selfie) space.
         // Back camera: flip the whole container so both layers un-mirror together on screen.
+        // Also flip the anchor X scale so the emote tracks to the correct side.
         if (currentFacing === 'environment') {
           document.querySelector('.example-container').style.transform = 'scaleX(-1)';
+          document.querySelector('a-scene').addEventListener('loaded', function () {
+            var anchor = document.getElementById('anchor-168');
+            if (anchor) anchor.setAttribute('scale', '-1 1 1');
+          });
         }
 
         // Preload header image so it is ready when compositing
