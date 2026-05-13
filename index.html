@@ -387,10 +387,13 @@
         // Track which camera is active for correct mirroring
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
 
-        // MindAR always mirrors its container for selfie use.
-        // Back camera: counter-flip the scene container so it appears un-mirrored.
+        // MindAR applies CSS scaleX(-1) to the <video> element for all cameras.
+        // Back camera: override that CSS mirror on the video only.
+        // The GL canvas is left untouched — MindAR renders it in un-mirrored space.
         if (currentFacing === 'environment') {
-          document.querySelector('.example-container').style.transform = 'scaleX(-1)';
+          var backCamStyle = document.createElement('style');
+          backCamStyle.textContent = '.example-container video { transform: none !important; }';
+          document.head.appendChild(backCamStyle);
         }
 
         // Preload header image so it is ready when compositing
@@ -407,7 +410,7 @@
         }
 
         function ensureCompCanvas() {
-          var dpr = window.devicePixelRatio || 1;
+          var dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2× for fast encoding
           var w   = Math.round(window.innerWidth  * dpr);
           var h   = Math.round(window.innerHeight * dpr);
           if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
