@@ -387,6 +387,12 @@
         // Track which camera is active for correct mirroring
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
 
+        // MindAR always mirrors its container for selfie use.
+        // Back camera: counter-flip the scene container so it appears un-mirrored.
+        if (currentFacing === 'environment') {
+          document.querySelector('.example-container').style.transform = 'scaleX(-1)';
+        }
+
         // Preload header image so it is ready when compositing
         var headerImg = new Image();
         headerImg.src = 'assets/header.png';
@@ -517,8 +523,8 @@
             requestAnimationFrame(function () {
               drawComposite();
               comp.toBlob(function (blob) {
-                if (blob) downloadBlob(blob, 'jollibee-ar-' + Date.now() + '.png');
-              }, 'image/png');
+                if (blob) downloadBlob(blob, 'jollibee-ar-' + Date.now() + '.jpg');
+              }, 'image/jpeg', 0.92);
             });
           });
         }
