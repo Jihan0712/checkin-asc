@@ -19,6 +19,7 @@
           this._smileFrames = 0;
           this._ready       = false;
           this._noFace      = document.getElementById('no-face');
+          this._hideTimer   = null;
           var self = this;
 
           document.querySelector('a-scene').addEventListener('arReady', function () {
@@ -44,6 +45,8 @@
           }
 
           if (!this._anchor.object3D.visible) {
+            // Show no-face overlay immediately when face is lost
+            if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
             this._noFace.style.display = 'flex';
             this._bee.object3D.visible   = false;
             this._jolli.object3D.visible = false;
@@ -51,6 +54,16 @@
             this._popElapsed  = -1;
             this._wasSmiling  = false;
             return;
+          }
+
+          // Face detected — hide no-face overlay after 1000ms delay
+          if (this._noFace.style.display !== 'none') {
+            if (!this._hideTimer) {
+              var nf = this._noFace;
+              this._hideTimer = setTimeout(function () { nf.style.display = 'none'; }, 1000);
+            }
+          } else {
+            if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
           }
 
           // Read world-space positions from landmark matrices
@@ -74,6 +87,7 @@
           this._wasSmiling = smiling;
 
           this._noFace.style.display = 'none';
+          if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
 
           if (smiling) {
             this._bee.object3D.visible   = this._showBee;
@@ -400,6 +414,26 @@
           return compCanvas;
         }
 
+        // Draw src into dest rect using object-fit:cover cropping
+        function drawCover(src, dx, dy, dw, dh) {
+          var sw = src.videoWidth  || src.naturalWidth  || src.width  || 0;
+          var sh = src.videoHeight || src.naturalHeight || src.height || 0;
+          if (!sw || !sh) { compCtx.drawImage(src, dx, dy, dw, dh); return; }
+          var srcRatio  = sw / sh;
+          var destRatio = dw / dh;
+          var sx, sy, sW, sH;
+          if (srcRatio > destRatio) {
+            // source is wider — crop left/right
+            sH = sh; sW = sh * destRatio;
+            sx = (sw - sW) / 2; sy = 0;
+          } else {
+            // source is taller — crop top/bottom
+            sW = sw; sH = sw / destRatio;
+            sx = 0; sy = (sh - sH) / 2;
+          }
+          compCtx.drawImage(src, sx, sy, sW, sH, dx, dy, dw, dh);
+        }
+
         function drawComposite() {
           var gl    = getGlCanvas();
           var video = getVideoEl();
@@ -408,17 +442,13 @@
           var h = compCanvas.height;
           compCtx.clearRect(0, 0, w, h);
 
-          // Draw camera feed — mirror only for front (user) camera
+          // Draw camera feed with cover-crop so it fills the portrait canvas without stretch
           if (video && video.readyState >= 2) {
-            if (currentFacing === 'user') {
-              compCtx.save();
-              compCtx.translate(w, 0);
-              compCtx.scale(-1, 1);
-              compCtx.drawImage(video, 0, 0, w, h);
-              compCtx.restore();
-            } else {
-              compCtx.drawImage(video, 0, 0, w, h);
-            }
+            compCtx.save();
+            compCtx.translate(w, 0);
+            compCtx.scale(-1, 1);
+            drawCover(video, 0, 0, w, h);
+            compCtx.restore();
           }
 
           // Draw AR overlay
@@ -429,14 +459,15 @@
             var headerEl = document.querySelector('#app-title img');
             if (headerEl) {
               var rect   = headerEl.getBoundingClientRect();
-              var scaleX = w / window.innerWidth;
-              var scaleY = h / window.innerHeight;
+              var dpr    = window.devicePixelRatio || 1;
+              var scaleX = w / (window.innerWidth  * dpr);
+              var scaleY = h / (window.innerHeight * dpr);
               compCtx.drawImage(
                 headerImg,
-                rect.left   * scaleX,
-                rect.top    * scaleY,
-                rect.width  * scaleX,
-                rect.height * scaleY
+                rect.left   * dpr * scaleX,
+                rect.top    * dpr * scaleY,
+                rect.width  * dpr * scaleX,
+                rect.height * dpr * scaleY
               );
             }
           }
