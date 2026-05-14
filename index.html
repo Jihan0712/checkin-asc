@@ -193,6 +193,7 @@
         }
 
         var headerImg = new Image();
+        headerImg.crossOrigin = 'anonymous'; // prevent canvas taint on Chrome
         headerImg.src = 'assets/header.png';
 
         function getGlCanvas() {
@@ -293,8 +294,13 @@
           if (bgRafId) { cancelAnimationFrame(bgRafId); bgRafId = null; }
           rafId = requestAnimationFrame(compLoop);
           chunks = [];
-          var stream = comp.captureStream(30);
-          var types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+          var captureFn = comp.captureStream || comp.mozCaptureStream;
+          if (!captureFn || typeof MediaRecorder === 'undefined') {
+            cancelAnimationFrame(rafId); rafId = null; startBgLoop(); return;
+          }
+          var stream = captureFn.call(comp, 30);
+          // Chrome Android does not support mp4 recording — webm is used instead
+          var types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
           var mimeType = types.find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
           try { mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {}); }
           catch (e) { cancelAnimationFrame(rafId); rafId = null; startBgLoop(); return; }
@@ -302,9 +308,9 @@
           mediaRecorder.onstop = function () {
             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
             startBgLoop();
-            var mType = mediaRecorder.mimeType || '';
+            var mType = mediaRecorder.mimeType || 'video/webm';
             var ext = mType.includes('mp4') ? 'mp4' : 'webm';
-            var blob = new Blob(chunks, { type: mType || 'video/mp4' });
+            var blob = new Blob(chunks, { type: mType });
             downloadBlob(blob, 'jollibee-ar-' + Date.now() + '.' + ext);
           };
           mediaRecorder.start(100);
