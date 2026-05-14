@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -509,16 +509,15 @@
             }
           }
 
-          // Header baked at its exact on-screen position
+          // Header baked centered, same visual size as on-screen preview.
+          // Derive pixel scale from actual canvas vs CSS viewport to avoid DPR mismatch.
           if (headerImg.complete && headerImg.naturalWidth > 0) {
-            var headerEl = document.querySelector('#app-title img');
-            if (headerEl) {
-              var rect = headerEl.getBoundingClientRect();
-              var dpr  = window.devicePixelRatio || 1;
-              compCtx.drawImage(headerImg,
-                rect.left  * dpr, rect.top    * dpr,
-                rect.width * dpr, rect.height * dpr);
-            }
+            var scaleY = window.innerHeight > 0 ? h / window.innerHeight : (window.devicePixelRatio || 1);
+            var hH = Math.round(24 * scaleY);
+            var hW = Math.round(headerImg.naturalWidth * hH / headerImg.naturalHeight);
+            var hX = Math.round((w - hW) / 2);
+            var hY = Math.round(12 * scaleY);
+            compCtx.drawImage(headerImg, hX, hY, hW, hH);
           }
         }
 
