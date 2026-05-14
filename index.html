@@ -91,7 +91,7 @@
       });
     </script>
     <style>
-      body { margin: 0; background: #000; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      body { margin: 0; background: #000; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
       html, body { height: 100%; height: -webkit-fill-available; }
       .example-container { overflow: hidden; position: absolute; width: 100%; height: 100%; touch-action: none; }
       #no-face { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 50; }
@@ -106,12 +106,6 @@
       #capture-inner { width: 60px; height: 60px; border-radius: 50%; background: #fff; transition: border-radius 0.2s, background 0.2s, width 0.2s, height 0.2s; pointer-events: none; }
       #capture-btn.recording #capture-inner { border-radius: 10px; background: #e0303a; width: 36px; height: 36px; }
       #rec-badge { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background: #e0303a; color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; display: none; font-family: sans-serif; white-space: nowrap; }
-      video { -webkit-playsinline: true; object-fit: cover; }
-      #save-preview { display: none; position: fixed; inset: 0; z-index: 210; background: rgba(0,0,0,0.92); flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-      #save-preview.visible { display: flex; }
-      #save-preview img, #save-preview video { max-width: 90%; max-height: 60vh; border-radius: 10px; }
-      #save-preview p { color: #fff; font-family: sans-serif; font-size: 0.88rem; text-align: center; padding: 0 24px; margin: 0; line-height: 1.4; }
-      #save-preview-close { color: #fff; background: rgba(255,255,255,0.18); border: none; padding: 10px 28px; border-radius: 20px; font-size: 1rem; font-family: sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
       #share-overlay { display: none; position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.82); align-items: center; justify-content: center; }
       #share-overlay.visible { display: flex; }
       #share-overlay > img { max-width: 88%; max-height: 82vh; height: auto; border-radius: 16px; }
@@ -126,18 +120,8 @@
         var _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = function (constraints) {
           if (constraints && constraints.video) {
-            var facingConstraint = facing === 'environment' ? { exact: 'environment' } : 'user';
-            if (typeof constraints.video === 'object') { constraints.video.facingMode = facingConstraint; }
-            else { constraints.video = { facingMode: facingConstraint }; }
-          }
-          if (facing === 'environment') {
-            // { exact: 'environment' } can throw OverconstrainedError on some iOS devices.
-            // Retry with { ideal: 'environment' } as fallback so back camera always opens.
-            return _orig(constraints).catch(function () {
-              if (typeof constraints.video === 'object') { constraints.video.facingMode = { ideal: 'environment' }; }
-              else { constraints.video = { facingMode: { ideal: 'environment' } }; }
-              return _orig(constraints);
-            });
+            if (typeof constraints.video === 'object') { constraints.video.facingMode = facing; }
+            else { constraints.video = { facingMode: facing }; }
           }
           return _orig(constraints);
         };
@@ -180,12 +164,6 @@
       <img src="assets/share.png" alt="Share - WOW BIDA!" />
       <button id="share-close">&#x2715;</button>
     </div>
-    <div id="save-preview">
-      <p id="save-preview-hint"></p>
-      <img id="save-preview-img" src="" alt="" style="display:none" />
-      <video id="save-preview-vid" controls playsinline style="display:none"></video>
-      <button id="save-preview-close">Done</button>
-    </div>
     <script>
       (function () {
         var captureBtn    = document.getElementById('capture-btn');
@@ -201,10 +179,6 @@
         var rafId         = null;
         var bgRafId       = null;
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
-
-        function isIOS() {
-          return /iP(ad|hone|od)/.test(navigator.userAgent);
-        }
 
         if (currentFacing === 'environment') {
           document.querySelector('.example-container').style.transform = 'scaleX(-1)';
@@ -227,12 +201,8 @@
         function getVideoEl() { return document.querySelector('video'); }
 
         function ensureCompCanvas() {
-          // Size comp canvas to the visible viewport (capped at 2x dpr).
-          // A-Frame on iOS can initialise its GL canvas before the dynamic toolbar
-          // settles, producing a different aspect ratio than what the user actually
-          // sees. Using window dimensions as the authority avoids that mismatch.
           var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          var w = Math.round(window.innerWidth  * dpr);
+          var w = Math.round(window.innerWidth * dpr);
           var h = Math.round(window.innerHeight * dpr);
           if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
             compCanvas = document.createElement('canvas');
@@ -240,20 +210,6 @@
             compCtx = compCanvas.getContext('2d');
           }
           return compCanvas;
-        }
-
-        // Draw the GL/WebGL canvas into the comp canvas with cover-crop behaviour.
-        // This prevents squish when A-Frame's internal pixel ratio differs from ours.
-        function drawGlCover(gl) {
-          if (!gl || !gl.width || !gl.height) return;
-          var sw = gl.width, sh = gl.height;
-          var dw = compCanvas.width, dh = compCanvas.height;
-          if (sw === dw && sh === dh) { compCtx.drawImage(gl, 0, 0); return; }
-          var srcRatio = sw / sh, destRatio = dw / dh;
-          var sx, sy, sW, sH;
-          if (srcRatio > destRatio) { sH = sh; sW = sh * destRatio; sx = (sw - sW) / 2; sy = 0; }
-          else                      { sW = sw; sH = sw / destRatio; sx = 0; sy = (sh - sH) / 2; }
-          compCtx.drawImage(gl, sx, sy, sW, sH, 0, 0, dw, dh);
         }
 
         function drawCover(src, dx, dy, dw, dh) {
@@ -276,21 +232,20 @@
             if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
             if (gl) {
               compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
-              drawGlCover(gl); compCtx.restore();
+              compCtx.drawImage(gl, 0, 0, w, h); compCtx.restore();
             }
           } else {
             compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
             if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
             compCtx.restore();
-            if (gl) drawGlCover(gl);
+            if (gl) compCtx.drawImage(gl, 0, 0, w, h);
           }
           if (headerImg.complete && headerImg.naturalWidth > 0) {
             var headerEl = document.querySelector('#app-title img');
             if (headerEl) {
               var rect = headerEl.getBoundingClientRect();
-              // Scale from CSS pixels to comp-canvas pixels (comp canvas may be at any dpr)
-              var canvasDpr = w / window.innerWidth;
-              compCtx.drawImage(headerImg, rect.left * canvasDpr, rect.top * canvasDpr, rect.width * canvasDpr, rect.height * canvasDpr);
+              var dpr = window.devicePixelRatio || 1;
+              compCtx.drawImage(headerImg, rect.left * dpr, rect.top * dpr, rect.width * dpr, rect.height * dpr);
             }
           }
         }
@@ -315,46 +270,7 @@
           }); });
         }
 
-        function iosPreviewBlob(blob, filename) {
-          var url     = URL.createObjectURL(blob);
-          var isVideo = blob.type.indexOf('video') === 0;
-          var overlay = document.getElementById('save-preview');
-          var hint    = document.getElementById('save-preview-hint');
-          var imgEl   = document.getElementById('save-preview-img');
-          var vidEl   = document.getElementById('save-preview-vid');
-          hint.textContent = isVideo
-            ? 'Tap the video options then "Save Video" to keep it.'
-            : 'Long-press the image then tap "Save to Photos".';
-          if (isVideo) {
-            imgEl.style.display = 'none'; vidEl.style.display = ''; vidEl.src = url;
-          } else {
-            vidEl.style.display = 'none'; imgEl.style.display = ''; imgEl.src = url;
-          }
-          overlay.classList.add('visible');
-          document.getElementById('save-preview-close').onclick = function () {
-            overlay.classList.remove('visible');
-            vidEl.pause(); vidEl.src = ''; imgEl.src = '';
-            setTimeout(function () { URL.revokeObjectURL(url); }, 500);
-          };
-        }
-
         function downloadBlob(blob, filename) {
-          if (isIOS()) {
-            // iOS Safari blocks <a download> entirely.
-            // 1st choice: Web Share API with files (iOS 15+) — pops the native share
-            //             sheet where the user taps "Save Image" / "Save Video" once.
-            // 2nd choice: preview overlay with long-press / video-options instructions.
-            if (navigator.canShare) {
-              var file = new File([blob], filename, { type: blob.type });
-              if (navigator.canShare({ files: [file] })) {
-                navigator.share({ files: [file], title: 'JollibeeAR' })
-                  .catch(function () { iosPreviewBlob(blob, filename); });
-                return;
-              }
-            }
-            iosPreviewBlob(blob, filename);
-            return;
-          }
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a');
           a.href = url; a.download = filename;
