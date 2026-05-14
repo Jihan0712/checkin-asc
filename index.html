@@ -126,8 +126,11 @@
         var _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = function (constraints) {
           if (constraints && constraints.video) {
-            if (typeof constraints.video === 'object') { constraints.video.facingMode = facing; }
-            else { constraints.video = { facingMode: facing }; }
+            // iOS Safari requires { exact: 'environment' } to reliably open the back camera.
+            // For the front camera a plain string is fine.
+            var facingConstraint = facing === 'environment' ? { exact: 'environment' } : 'user';
+            if (typeof constraints.video === 'object') { constraints.video.facingMode = facingConstraint; }
+            else { constraints.video = { facingMode: facingConstraint }; }
           }
           return _orig(constraints);
         };
@@ -217,9 +220,18 @@
         function getVideoEl() { return document.querySelector('video'); }
 
         function ensureCompCanvas() {
-          var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          var w = Math.round(window.innerWidth * dpr);
-          var h = Math.round(window.innerHeight * dpr);
+          // Match the GL canvas exactly so drawImage is always a 1:1 pixel copy.
+          // A-Frame may use the full devicePixelRatio (e.g. 3× on iPhone Pro) which
+          // can differ from our capped value; using gl dimensions avoids any squish.
+          var gl = getGlCanvas();
+          var w, h;
+          if (gl && gl.width > 0 && gl.height > 0) {
+            w = gl.width; h = gl.height;
+          } else {
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            w = Math.round(window.innerWidth * dpr);
+            h = Math.round(window.innerHeight * dpr);
+          }
           if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
             compCanvas = document.createElement('canvas');
             compCanvas.width = w; compCanvas.height = h;
@@ -260,8 +272,9 @@
             var headerEl = document.querySelector('#app-title img');
             if (headerEl) {
               var rect = headerEl.getBoundingClientRect();
-              var dpr = window.devicePixelRatio || 1;
-              compCtx.drawImage(headerImg, rect.left * dpr, rect.top * dpr, rect.width * dpr, rect.height * dpr);
+              // Scale from CSS pixels to comp-canvas pixels (comp canvas may be at any dpr)
+              var canvasDpr = w / window.innerWidth;
+              compCtx.drawImage(headerImg, rect.left * canvasDpr, rect.top * canvasDpr, rect.width * canvasDpr, rect.height * canvasDpr);
             }
           }
         }
