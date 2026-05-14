@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -9,17 +9,6 @@
     <meta name="theme-color" content="#000000" />
     <title>JollibeeAR</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script>
-      // Redirect iOS / Safari users to ios.html before loading heavy AR scripts
-      (function () {
-        var ua = navigator.userAgent;
-        var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-        var isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-        if (isIOS || isSafari) {
-          window.location.replace('ios.html');
-        }
-      })();
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
     <script>
       AFRAME.registerComponent('emote-switcher', {
@@ -32,9 +21,16 @@
           this._noFace      = document.getElementById('no-face');
           this._hideTimer   = null;
           var self = this;
-          document.querySelector('a-scene').addEventListener('arReady', function () {});
-          setInterval(function () { self._showBee = !self._showBee; }, 1000);
+
+          document.querySelector('a-scene').addEventListener('arReady', function () {
+            // AR is ready — overlay will be controlled per-frame in tick
+          });
+
+          setInterval(function () {
+            self._showBee = !self._showBee;
+          }, 1000);
         },
+
         tick: function (time, timeDelta) {
           if (!this._ready) {
             this._bee    = document.getElementById('bee-img');
@@ -47,14 +43,20 @@
             if (!this._bee || !this._lm61) return;
             this._ready = true;
           }
+
           if (!this._anchor.object3D.visible) {
+            // Show no-face overlay immediately when face is lost
             if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
             this._noFace.style.display = 'flex';
             this._bee.object3D.visible   = false;
             this._jolli.object3D.visible = false;
-            this._smileFrames = 0; this._popElapsed = -1; this._wasSmiling = false;
+            this._smileFrames = 0;
+            this._popElapsed  = -1;
+            this._wasSmiling  = false;
             return;
           }
+
+          // Face detected — hide no-face overlay after 1000ms delay
           if (this._noFace.style.display !== 'none') {
             if (!this._hideTimer) {
               var nf = this._noFace;
@@ -63,26 +65,39 @@
           } else {
             if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
           }
+
+          // Read world-space positions from landmark matrices
           var e61  = this._lm61.object3D.matrix.elements;
           var e291 = this._lm291.object3D.matrix.elements;
           var e13  = this._lm13.object3D.matrix.elements;
           var e14  = this._lm14.object3D.matrix.elements;
-          var faceWidth = Math.abs(e61[12] - e291[12]);
-          var cornersUp = faceWidth > 0 && ((e61[13] + e291[13]) / 2 - e13[13]) / faceWidth > 0.08;
-          var mouthOpen = faceWidth > 0 && (e13[13] - e14[13]) / faceWidth > 0.12;
+
+          var faceWidth  = Math.abs(e61[12] - e291[12]);
+          // Mouth corners higher (larger Y) than upper lip center = smile
+          var cornersUp  = faceWidth > 0 && ((e61[13] + e291[13]) / 2 - e13[13]) / faceWidth > 0.08;
+          // Upper lip lower than lower lip = mouth open
+          var mouthOpen  = faceWidth > 0 && (e13[13] - e14[13]) / faceWidth > 0.12;
+
           if (cornersUp || mouthOpen) { this._smileFrames = Math.min(this._smileFrames + 1, 10); }
           else                        { this._smileFrames = Math.max(this._smileFrames - 2, 0);  }
+
           var smiling = this._smileFrames >= 4;
+
           if (smiling && !this._wasSmiling) { this._popElapsed = 0; }
           this._wasSmiling = smiling;
+
           this._noFace.style.display = 'none';
           if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
+
           if (smiling) {
             this._bee.object3D.visible   = this._showBee;
             this._jolli.object3D.visible = !this._showBee;
+
             if (this._popElapsed >= 0 && this._popElapsed < 500) {
               var t = this._popElapsed / 500;
-              var s = t < 0.55 ? (t / 0.55) * 1.35 : 1.35 - ((t - 0.55) / 0.45) * 0.35;
+              var s = t < 0.55
+                ? (t / 0.55) * 1.35
+                : 1.35 - ((t - 0.55) / 0.45) * 0.35;
               this._bee.object3D.scale.set(s, s, s);
               this._jolli.object3D.scale.set(s, s, s);
               this._popElapsed += timeDelta;
@@ -102,44 +117,199 @@
       });
     </script>
     <style>
-      body { margin: 0; background: #000; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
-      html, body { height: 100%; height: -webkit-fill-available; }
-      .example-container { overflow: hidden; position: absolute; width: 100%; height: 100%; touch-action: none; }
-      #no-face { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 50; }
+      body {
+        margin: 0;
+        background: #000;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      html, body {
+        height: 100%;
+        height: -webkit-fill-available;
+      }
+      .example-container {
+        overflow: hidden;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+      /* ── No-face overlay ── */
+      #no-face {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 50;
+      }
       #no-face img { width: 85%; max-width: 360px; height: auto; }
-      #top-bar { position: fixed; top: 0; left: 0; right: 0; padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%); z-index: 100; }
+      /* ── Top bar ── */
+      #top-bar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+        z-index: 100;
+      }
       #app-title img { height: 24px; width: auto; display: block; }
-      #bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; padding-bottom: max(28px, env(safe-area-inset-bottom)); padding-left: max(40px, env(safe-area-inset-left)); padding-right: max(40px, env(safe-area-inset-right)); padding-top: 20px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%); z-index: 100; }
-      .bar-side-btn { background: none; border: none; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; color: #fff; min-width: 52px; min-height: 52px; display: flex; align-items: center; justify-content: center; touch-action: manipulation; opacity: 0.9; }
-      .bar-side-btn img { width: 44px; height: 44px; object-fit: contain; display: block; }
-      #capture-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
-      #capture-btn { width: 76px; height: 76px; border-radius: 50%; background: transparent; border: 4px solid rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 0; touch-action: manipulation; }
-      #capture-inner { width: 60px; height: 60px; border-radius: 50%; background: #fff; transition: border-radius 0.2s, background 0.2s, width 0.2s, height 0.2s; pointer-events: none; }
-      #capture-btn.recording #capture-inner { border-radius: 10px; background: #e0303a; width: 36px; height: 36px; }
-      #rec-badge { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background: #e0303a; color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; display: none; font-family: sans-serif; white-space: nowrap; }
-      #share-overlay { display: none; position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.82); align-items: center; justify-content: center; }
+      /* ── Bottom bar ── */
+      #bottom-bar {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        padding-bottom: max(28px, env(safe-area-inset-bottom));
+        padding-left: max(40px, env(safe-area-inset-left));
+        padding-right: max(40px, env(safe-area-inset-right));
+        padding-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+        z-index: 100;
+      }
+      .bar-side-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        color: #fff;
+        min-width: 52px;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: manipulation;
+        opacity: 0.9;
+      }
+      #capture-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #capture-btn {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background: transparent;
+        border: 4px solid rgba(255,255,255,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        padding: 0;
+        touch-action: manipulation;
+      }
+      #capture-inner {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #fff;
+        transition: border-radius 0.2s, background 0.2s, width 0.2s, height 0.2s;
+        pointer-events: none;
+      }
+      #capture-btn.recording #capture-inner {
+        border-radius: 10px;
+        background: #e0303a;
+        width: 36px;
+        height: 36px;
+      }
+      #rec-badge {
+        position: absolute;
+        top: -28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #e0303a;
+        color: #fff;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        padding: 3px 8px;
+        border-radius: 4px;
+        display: none;
+        font-family: sans-serif;
+        white-space: nowrap;
+      }
+      .bar-side-btn img {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+        display: block;
+      }
+      /* ── Share overlay ── */
+      #share-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 150;
+        background: rgba(0,0,0,0.82);
+        align-items: center;
+        justify-content: center;
+      }
       #share-overlay.visible { display: flex; }
-      #share-overlay > img { max-width: 88%; max-height: 82vh; height: auto; border-radius: 16px; }
-      #share-close { position: absolute; top: max(18px, env(safe-area-inset-top)); right: 18px; background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.6); color: #fff; font-size: 1.1rem; line-height: 1; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; font-family: sans-serif; }
+      #share-overlay > img {
+        max-width: 88%;
+        max-height: 82vh;
+        height: auto;
+        border-radius: 16px;
+      }
+      #share-close {
+        position: absolute;
+        top: max(18px, env(safe-area-inset-top));
+        right: 18px;
+        background: rgba(0,0,0,0.55);
+        border: 2px solid rgba(255,255,255,0.6);
+        color: #fff;
+        font-size: 1.1rem;
+        line-height: 1;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+        font-family: sans-serif;
+      }
     </style>
   </head>
   <body>
     <script>
+      /* Intercept getUserMedia so MindAR uses the stored camera facing mode */
       (function () {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
         var facing = sessionStorage.getItem('cameraFacing') || 'user';
         var _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = function (constraints) {
           if (constraints && constraints.video) {
-            if (typeof constraints.video === 'object') { constraints.video.facingMode = facing; }
-            else { constraints.video = { facingMode: facing }; }
+            if (typeof constraints.video === 'object') {
+              constraints.video.facingMode = facing;
+            } else {
+              constraints.video = { facingMode: facing };
+            }
           }
           return _orig(constraints);
         };
       })();
     </script>
-    <div id="top-bar"><span id="app-title"><img src="assets/header.png" alt="JollibeeAR" /></span></div>
-    <div id="no-face"><img src="assets/noface.png" alt="Smile ka na para lumabas ang WOW BIDA!" /></div>
+    <div id="top-bar">
+      <span id="app-title"><img src="assets/header.png" alt="JollibeeAR" /></span>
+    </div>
+
+    <div id="no-face">
+      <img src="assets/noface.png" alt="Smile ka na para lumabas ang WOW BIDA!" />
+    </div>
+
     <div class="example-container">
       <a-scene mindar-face emote-switcher embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true, preserveDrawingBuffer: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         <a-assets>
@@ -149,32 +319,59 @@
           <img id="back-bee-tex"   src="assets/emotes/back_bee.png" />
           <img id="back-jolli-tex" src="assets/emotes/back_jolli.png" />
         </a-assets>
+
         <a-camera active="false" position="0 0 0"></a-camera>
+
         <a-entity mindar-face-target="anchorIndex: 168">
           <a-gltf-model mindar-face-occluder position="0 -0.3 0.15" rotation="0 0 0" scale="0.065 0.065 0.065" src="#headModel"></a-gltf-model>
         </a-entity>
+
         <a-entity id="anchor-168" mindar-face-target="anchorIndex: 168">
-          <a-image id="bee-img"   src="#bee-tex"   position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="true"></a-image>
-          <a-image id="jolli-img" src="#jolli-tex" position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="false"></a-image>
+          <a-image id="bee-img"
+                   src="#bee-tex"
+                   position="0 0.7 0"
+                   width="1.2" height="1.2"
+                   transparent="true"
+                   visible="true"></a-image>
+          <a-image id="jolli-img"
+                   src="#jolli-tex"
+                   position="0 0.7 0"
+                   width="1.2" height="1.2"
+                   transparent="true"
+                   visible="false"></a-image>
         </a-entity>
+
         <a-entity id="lm-61"  mindar-face-target="anchorIndex: 61"></a-entity>
         <a-entity id="lm-291" mindar-face-target="anchorIndex: 291"></a-entity>
         <a-entity id="lm-13"  mindar-face-target="anchorIndex: 13"></a-entity>
         <a-entity id="lm-14"  mindar-face-target="anchorIndex: 14"></a-entity>
       </a-scene>
     </div>
+
+    <!-- ── Bottom bar ── -->
     <div id="bottom-bar">
-      <button class="bar-side-btn" id="camera-btn" title="Switch camera"><img src="assets/change-camera.png" alt="Switch camera" /></button>
+      <button class="bar-side-btn" id="camera-btn" title="Switch camera">
+        <img src="assets/change-camera.png" alt="Switch camera" />
+      </button>
+
       <div id="capture-wrap">
-        <button id="capture-btn" title="Tap for photo, Hold for video"><div id="capture-inner"></div></button>
-        <div id="rec-badge">&#9679; REC</div>
+        <button id="capture-btn" title="Tap for photo · Hold for video">
+          <div id="capture-inner"></div>
+        </button>
+        <div id="rec-badge">● REC</div>
       </div>
-      <button class="bar-side-btn" id="share-btn" title="Share"><img src="assets/share-button.png" alt="Share" /></button>
+
+      <button class="bar-side-btn" id="share-btn" title="Share">
+        <img src="assets/share-button.png" alt="Share" />
+      </button>
     </div>
+
+    <!-- ── Share overlay ── -->
     <div id="share-overlay">
-      <img src="assets/share.png" alt="Share - WOW BIDA!" />
-      <button id="share-close">&#x2715;</button>
+      <img src="assets/share.png" alt="Share — WOW BIDA!" />
+      <button id="share-close">✕</button>
     </div>
+
     <script>
       (function () {
         var captureBtn    = document.getElementById('capture-btn');
@@ -188,79 +385,32 @@
         var compCanvas    = null;
         var compCtx       = null;
         var rafId         = null;
-        var bgRafId       = null;
+
+        // Track which camera is active for correct mirroring
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
 
+        // Back camera: un-mirror the container and swap to mirrored emote images.
         if (currentFacing === 'environment') {
           document.querySelector('.example-container').style.transform = 'scaleX(-1)';
           function swapBackEmotes() {
             var bee   = document.getElementById('bee-img');
             var jolli = document.getElementById('jolli-img');
-            if (bee)   bee.setAttribute('src', '#back-bee-tex');
+            if (bee)   bee.setAttribute('src',   '#back-bee-tex');
             if (jolli) jolli.setAttribute('src', '#back-jolli-tex');
           }
-          if (document.getElementById('bee-img')) { swapBackEmotes(); }
-          else { document.querySelector('a-scene').addEventListener('loaded', swapBackEmotes); }
+          if (document.getElementById('bee-img')) {
+            swapBackEmotes();
+          } else {
+            document.querySelector('a-scene').addEventListener('loaded', swapBackEmotes);
+          }
         }
 
+        // Preload header image so it is ready when compositing
         var headerImg = new Image();
         headerImg.src = 'assets/header.png';
 
-        function getGlCanvas() {
-          return document.querySelector('a-scene canvas') || document.querySelector('canvas.a-canvas');
-        }
-        function getVideoEl() { return document.querySelector('video'); }
-
-        function ensureCompCanvas() {
-          var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          var w = Math.round(window.innerWidth * dpr);
-          var h = Math.round(window.innerHeight * dpr);
-          if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
-            compCanvas = document.createElement('canvas');
-            compCanvas.width = w; compCanvas.height = h;
-            compCtx = compCanvas.getContext('2d');
-          }
-          return compCanvas;
-        }
-
-        function drawCover(src, dx, dy, dw, dh) {
-          var sw = src.videoWidth || src.naturalWidth || src.width || 0;
-          var sh = src.videoHeight || src.naturalHeight || src.height || 0;
-          if (!sw || !sh) { compCtx.drawImage(src, dx, dy, dw, dh); return; }
-          var srcRatio = sw / sh, destRatio = dw / dh;
-          var sx, sy, sW, sH;
-          if (srcRatio > destRatio) { sH = sh; sW = sh * destRatio; sx = (sw - sW) / 2; sy = 0; }
-          else { sW = sw; sH = sw / destRatio; sx = 0; sy = (sh - sH) / 2; }
-          compCtx.drawImage(src, sx, sy, sW, sH, dx, dy, dw, dh);
-        }
-
-        function drawComposite() {
-          var gl = getGlCanvas(), video = getVideoEl();
-          if (!compCanvas) return;
-          var w = compCanvas.width, h = compCanvas.height;
-          compCtx.clearRect(0, 0, w, h);
-          if (currentFacing === 'environment') {
-            if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
-            if (gl) {
-              compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
-              compCtx.drawImage(gl, 0, 0, w, h); compCtx.restore();
-            }
-          } else {
-            compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
-            if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
-            compCtx.restore();
-            if (gl) compCtx.drawImage(gl, 0, 0, w, h);
-          }
-          if (headerImg.complete && headerImg.naturalWidth > 0) {
-            var hDpr = Math.min(window.devicePixelRatio || 1, 2);
-            var hH = Math.round(24 * hDpr);
-            var hW = Math.round(headerImg.naturalWidth * hH / headerImg.naturalHeight);
-            var hX = Math.round((w - hW) / 2);
-            var hY = Math.round(12 * hDpr);
-            compCtx.drawImage(headerImg, hX, hY, hW, hH);
-          }
-        }
-
+        // Keep composite canvas continuously updated so photo capture is instant
+        var bgRafId = null;
         function startBgLoop() {
           if (bgRafId) return;
           ensureCompCanvas();
@@ -268,24 +418,135 @@
           bgRafId = requestAnimationFrame(loop);
         }
         document.querySelector('a-scene').addEventListener('arReady', startBgLoop);
+        // Fallback: start after 4s if arReady never fires
         setTimeout(startBgLoop, 4000);
 
-        function compLoop() { drawComposite(); rafId = requestAnimationFrame(compLoop); }
+        function getGlCanvas() {
+          return document.querySelector('a-scene canvas') ||
+                 document.querySelector('canvas.a-canvas');
+        }
+
+        function getVideoEl() {
+          return document.querySelector('video');
+        }
+
+        function ensureCompCanvas() {
+          var dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2× for fast encoding
+          var w   = Math.round(window.innerWidth  * dpr);
+          var h   = Math.round(window.innerHeight * dpr);
+          if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
+            compCanvas = document.createElement('canvas');
+            compCanvas.width  = w;
+            compCanvas.height = h;
+            compCtx = compCanvas.getContext('2d');
+          }
+          return compCanvas;
+        }
+
+        // Detect whether MindAR is displaying the canvas mirrored via CSS transform
+        function isGlMirrored() {
+          var gl = getGlCanvas();
+          if (!gl) return false;
+          var t = window.getComputedStyle(gl).transform || '';
+          // scaleX(-1) renders as matrix(-1, 0, 0, 1, 0, 0)
+          return t.indexOf('matrix(-1') !== -1 || t.indexOf('scale(-1') !== -1;
+        }
+
+        // Draw src cropped with object-fit:cover into (dx,dy,dw,dh)
+        function drawCover(src, dx, dy, dw, dh) {
+          var sw = src.videoWidth  || src.naturalWidth  || src.width  || 0;
+          var sh = src.videoHeight || src.naturalHeight || src.height || 0;
+          if (!sw || !sh) { compCtx.drawImage(src, dx, dy, dw, dh); return; }
+          var srcRatio  = sw / sh;
+          var destRatio = dw / dh;
+          var sx, sy, sW, sH;
+          if (srcRatio > destRatio) {
+            sH = sh; sW = sh * destRatio;
+            sx = (sw - sW) / 2; sy = 0;
+          } else {
+            sW = sw; sH = sw / destRatio;
+            sx = 0; sy = (sh - sH) / 2;
+          }
+          compCtx.drawImage(src, sx, sy, sW, sH, dx, dy, dw, dh);
+        }
+
+        function drawComposite() {
+          var gl    = getGlCanvas();
+          var video = getVideoEl();
+          if (!compCanvas) return;
+          var w = compCanvas.width;
+          var h = compCanvas.height;
+          compCtx.clearRect(0, 0, w, h);
+
+          if (currentFacing === 'environment') {
+            // Back camera capture:
+            // Raw video pixels are un-mirrored (camera space) — draw as-is.
+            // Raw GL pixels are in MindAR's mirrored space — flip them so the
+            // capture matches the un-mirrored screen view (whole-container flip).
+            if (video && video.readyState >= 2) {
+              drawCover(video, 0, 0, w, h);
+            }
+            if (gl) {
+              compCtx.save();
+              compCtx.translate(w, 0);
+              compCtx.scale(-1, 1);
+              compCtx.drawImage(gl, 0, 0, w, h);
+              compCtx.restore();
+            }
+          } else {
+            // Front camera capture:
+            // Raw video pixels are un-mirrored — flip them for selfie mirror view.
+            // Raw GL pixels are in MindAR's mirrored space — draw as-is.
+            compCtx.save();
+            compCtx.translate(w, 0);
+            compCtx.scale(-1, 1);
+            if (video && video.readyState >= 2) {
+              drawCover(video, 0, 0, w, h);
+            }
+            compCtx.restore();
+            if (gl) {
+              compCtx.drawImage(gl, 0, 0, w, h);
+            }
+          }
+
+          // Header baked at its exact on-screen position
+          if (headerImg.complete && headerImg.naturalWidth > 0) {
+            var headerEl = document.querySelector('#app-title img');
+            if (headerEl) {
+              var rect = headerEl.getBoundingClientRect();
+              var dpr  = window.devicePixelRatio || 1;
+              compCtx.drawImage(headerImg,
+                rect.left  * dpr, rect.top    * dpr,
+                rect.width * dpr, rect.height * dpr);
+            }
+          }
+        }
+
+        function compLoop() {
+          drawComposite();
+          rafId = requestAnimationFrame(compLoop);
+        }
 
         function flashScreen() {
           var f = document.createElement('div');
           f.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:200;opacity:0.75;pointer-events:none;transition:opacity 0.35s';
           document.body.appendChild(f);
-          requestAnimationFrame(function () { requestAnimationFrame(function () {
-            f.style.opacity = '0'; setTimeout(function () { document.body.removeChild(f); }, 400);
-          }); });
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              f.style.opacity = '0';
+              setTimeout(function () { document.body.removeChild(f); }, 400);
+            });
+          });
         }
 
         function downloadBlob(blob, filename) {
           var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          var a   = document.createElement('a');
+          a.href  = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
         }
 
@@ -293,6 +554,7 @@
           var comp = ensureCompCanvas();
           if (!comp) return;
           flashScreen();
+          // Canvas is kept current by the background loop — encode immediately
           comp.toBlob(function (blob) {
             if (blob) downloadBlob(blob, 'jollibee-ar-' + Date.now() + '.jpg');
           }, 'image/jpeg', 0.92);
@@ -301,21 +563,28 @@
         function startRecording() {
           var comp = ensureCompCanvas();
           if (!comp || isRecording) return;
+          // Pause bg loop; recording loop takes over
           if (bgRafId) { cancelAnimationFrame(bgRafId); bgRafId = null; }
           rafId = requestAnimationFrame(compLoop);
           chunks = [];
-          var stream = comp.captureStream(30);
-          var types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+          var stream   = comp.captureStream(30);
+          var types    = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
           var mimeType = types.find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
-          try { mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {}); }
-          catch (e) { cancelAnimationFrame(rafId); rafId = null; startBgLoop(); return; }
-          mediaRecorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+          try {
+            mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {});
+          } catch (e) {
+            cancelAnimationFrame(rafId); rafId = null;
+            return;
+          }
+          mediaRecorder.ondataavailable = function (e) {
+            if (e.data && e.data.size > 0) chunks.push(e.data);
+          };
           mediaRecorder.onstop = function () {
             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            // Resume bg loop after recording
             startBgLoop();
-            var mType = mediaRecorder.mimeType || '';
-            var ext = mType.includes('mp4') ? 'mp4' : 'webm';
-            var blob = new Blob(chunks, { type: mType || 'video/mp4' });
+            var ext  = (mediaRecorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+            var blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'video/webm' });
             downloadBlob(blob, 'jollibee-ar-' + Date.now() + '.' + ext);
           };
           mediaRecorder.start(100);
@@ -329,42 +598,66 @@
           isRecording = false;
           captureBtn.classList.remove('recording');
           recBadge.style.display = 'none';
+          // Keep drawing for 600ms so the encoder pipeline drains before we stop
           setTimeout(function () {
             mediaRecorder.requestData();
             setTimeout(function () { mediaRecorder.stop(); }, 100);
           }, 600);
         }
 
+        // ── Capture button (tap = photo, hold = video) ──
         captureBtn.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           captureBtn.setPointerCapture(e.pointerId);
-          holdTimer = setTimeout(function () { holdTimer = null; startRecording(); }, HOLD_MS);
+          holdTimer = setTimeout(function () {
+            holdTimer = null;
+            startRecording();
+          }, HOLD_MS);
         });
+
         captureBtn.addEventListener('pointerup', function (e) {
           e.preventDefault();
-          if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; takePhoto(); }
-          else if (isRecording) { stopRecording(); }
+          if (holdTimer !== null) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+            takePhoto();
+          } else if (isRecording) {
+            stopRecording();
+          }
         });
+
         captureBtn.addEventListener('pointercancel', function () {
           if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
           if (isRecording) stopRecording();
         });
 
+        // ── Camera toggle (front ↔ back) ──
         document.getElementById('camera-btn').addEventListener('click', function () {
           var next = currentFacing === 'user' ? 'environment' : 'user';
           sessionStorage.setItem('cameraFacing', next);
           window.location.reload();
         });
 
+        // ── Share button — native share sheet ──
         document.getElementById('share-btn').addEventListener('click', function () {
           if (navigator.share) {
-            navigator.share({ title: 'JollibeeAR - WOW BIDA!', url: window.location.href }).catch(function () {});
+            navigator.share({
+              title: 'JollibeeAR — WOW BIDA!',
+              url: window.location.href
+            }).catch(function () {}); // ignore cancel
           } else {
             shareOverlay.classList.add('visible');
           }
         });
-        document.getElementById('share-close').addEventListener('click', function () { shareOverlay.classList.remove('visible'); });
-        shareOverlay.addEventListener('click', function (e) { if (e.target === shareOverlay) shareOverlay.classList.remove('visible'); });
+
+        document.getElementById('share-close').addEventListener('click', function () {
+          shareOverlay.classList.remove('visible');
+        });
+
+        // Close overlay on background tap
+        shareOverlay.addEventListener('click', function (e) {
+          if (e.target === shareOverlay) shareOverlay.classList.remove('visible');
+        });
       })();
     </script>
   </body>

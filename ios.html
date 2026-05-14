@@ -21,7 +21,6 @@
           this._noFace      = document.getElementById('no-face');
           this._hideTimer   = null;
           var self = this;
-          document.querySelector('a-scene').addEventListener('arReady', function () {});
           setInterval(function () { self._showBee = !self._showBee; }, 1000);
         },
         tick: function (time, timeDelta) {
@@ -131,8 +130,8 @@
       <a-scene mindar-face emote-switcher embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true, preserveDrawingBuffer: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         <a-assets>
           <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
-          <img id="bee-tex"       src="assets/emotes/bee.png" />
-          <img id="jolli-tex"     src="assets/emotes/Jolli.png" />
+          <img id="bee-tex"        src="assets/emotes/bee.png" />
+          <img id="jolli-tex"      src="assets/emotes/Jolli.png" />
           <img id="back-bee-tex"   src="assets/emotes/back_bee.png" />
           <img id="back-jolli-tex" src="assets/emotes/back_jolli.png" />
         </a-assets>
@@ -165,10 +164,10 @@
       (function () {
         var captureBtn   = document.getElementById('capture-btn');
         var shareOverlay = document.getElementById('share-overlay');
-        var compCanvas   = null;
-        var compCtx      = null;
-        var bgRafId      = null;
         var currentFacing = sessionStorage.getItem('cameraFacing') || 'user';
+
+        var headerImg = new Image();
+        headerImg.src = 'assets/header.png';
 
         if (currentFacing === 'environment') {
           document.querySelector('.example-container').style.transform = 'scaleX(-1)';
@@ -182,72 +181,56 @@
           else { document.querySelector('a-scene').addEventListener('loaded', swapBackEmotes); }
         }
 
-        var headerImg = new Image();
-        headerImg.src = 'assets/header.png';
-
         function getGlCanvas() {
           return document.querySelector('a-scene canvas') || document.querySelector('canvas.a-canvas');
         }
-        function getVideoEl() { return document.querySelector('video'); }
 
-        function ensureCompCanvas() {
-          var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          var w = Math.round(window.innerWidth * dpr);
-          var h = Math.round(window.innerHeight * dpr);
-          if (!compCanvas || compCanvas.width !== w || compCanvas.height !== h) {
-            compCanvas = document.createElement('canvas');
-            compCanvas.width = w; compCanvas.height = h;
-            compCtx = compCanvas.getContext('2d');
-          }
-          return compCanvas;
-        }
+        // Hook into Three.js renderer after scene loads so bufferCanvas is always
+        // a fresh copy of the GL canvas, updated synchronously after every render.
+        var bufferCanvas = null;
+        var bufferCtx    = null;
+        var bufferReady  = false;
 
-        function drawCover(src, dx, dy, dw, dh) {
-          var sw = src.videoWidth || src.naturalWidth || src.width || 0;
-          var sh = src.videoHeight || src.naturalHeight || src.height || 0;
-          if (!sw || !sh) { compCtx.drawImage(src, dx, dy, dw, dh); return; }
-          var srcRatio = sw / sh, destRatio = dw / dh;
-          var sx, sy, sW, sH;
-          if (srcRatio > destRatio) { sH = sh; sW = sh * destRatio; sx = (sw - sW) / 2; sy = 0; }
-          else { sW = sw; sH = sw / destRatio; sx = 0; sy = (sh - sH) / 2; }
-          compCtx.drawImage(src, sx, sy, sW, sH, dx, dy, dw, dh);
-        }
-
-        function drawComposite() {
-          var gl = getGlCanvas(), video = getVideoEl();
-          if (!compCanvas) return;
-          var w = compCanvas.width, h = compCanvas.height;
-          compCtx.clearRect(0, 0, w, h);
-          if (currentFacing === 'environment') {
-            if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
-            if (gl) {
-              compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
-              compCtx.drawImage(gl, 0, 0, w, h); compCtx.restore();
+        document.querySelector('a-scene').addEventListener('loaded', function () {
+          var sceneEl  = document.querySelector('a-scene');
+          var glCanvas = sceneEl.canvas;
+          bufferCanvas        = document.createElement('canvas');
+          bufferCanvas.width  = glCanvas.width;
+          bufferCanvas.height = glCanvas.height;
+          bufferCtx           = bufferCanvas.getContext('2d');
+          var origRender = sceneEl.renderer.render.bind(sceneEl.renderer);
+          sceneEl.renderer.render = function (scene, camera) {
+            origRender(scene, camera);
+            if (bufferCanvas.width !== glCanvas.width || bufferCanvas.height !== glCanvas.height) {
+              bufferCanvas.width  = glCanvas.width;
+              bufferCanvas.height = glCanvas.height;
             }
+            bufferCtx.drawImage(glCanvas, 0, 0);
+            bufferReady = true;
+          };
+        });
+
+        function applyComposite(ctx, w, h) {
+          if (!bufferReady || !bufferCanvas || !bufferCanvas.width) return;
+          ctx.clearRect(0, 0, w, h);
+          if (currentFacing === 'environment') {
+            ctx.save();
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(bufferCanvas, 0, 0, w, h);
+            ctx.restore();
           } else {
-            compCtx.save(); compCtx.translate(w, 0); compCtx.scale(-1, 1);
-            if (video && video.readyState >= 2) drawCover(video, 0, 0, w, h);
-            compCtx.restore();
-            if (gl) compCtx.drawImage(gl, 0, 0, w, h);
+            ctx.drawImage(bufferCanvas, 0, 0, w, h);
           }
           if (headerImg.complete && headerImg.naturalWidth > 0) {
-            var hDpr = Math.min(window.devicePixelRatio || 1, 2);
-            var hH = Math.round(24 * hDpr);
-            var hW = Math.round(headerImg.naturalWidth * hH / headerImg.naturalHeight);
-            var hX = Math.round((w - hW) / 2);
-            var hY = Math.round(12 * hDpr);
-            compCtx.drawImage(headerImg, hX, hY, hW, hH);
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var hH  = Math.round(24 * dpr);
+            var hW  = Math.round(headerImg.naturalWidth * hH / headerImg.naturalHeight);
+            var hX  = Math.round((w - hW) / 2);
+            var hY  = Math.round(12 * dpr);
+            ctx.drawImage(headerImg, hX, hY, hW, hH);
           }
         }
-
-        function startBgLoop() {
-          if (bgRafId) return;
-          ensureCompCanvas();
-          function loop() { drawComposite(); bgRafId = requestAnimationFrame(loop); }
-          bgRafId = requestAnimationFrame(loop);
-        }
-        document.querySelector('a-scene').addEventListener('arReady', startBgLoop);
-        setTimeout(startBgLoop, 4000);
 
         function flashScreen() {
           var f = document.createElement('div');
@@ -259,17 +242,21 @@
         }
 
         function takePhoto() {
-          var comp = ensureCompCanvas();
-          if (!comp) return;
+          if (!bufferReady || !bufferCanvas || !bufferCanvas.width) return;
           flashScreen();
-          comp.toBlob(function (blob) {
+          var w   = bufferCanvas.width;
+          var h   = bufferCanvas.height;
+          var out = document.createElement('canvas');
+          out.width = w; out.height = h;
+          applyComposite(out.getContext('2d'), w, h);
+          out.toBlob(function (blob) {
             if (!blob) return;
-            // iOS 15+: share the image directly via native share sheet
+            // iOS 15+: share via native sheet so user can save to Photos
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], 'x.jpg', { type: 'image/jpeg' })] })) {
               var file = new File([blob], 'jollibee-ar-' + Date.now() + '.jpg', { type: 'image/jpeg' });
               navigator.share({ files: [file], title: 'JollibeeAR - WOW BIDA!' }).catch(function () {});
             } else {
-              // Fallback: open image in new tab so user can long-press to save
+              // Fallback: open in new tab, long-press to save
               var url = URL.createObjectURL(blob);
               window.open(url, '_blank');
               setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
