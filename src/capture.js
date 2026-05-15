@@ -173,11 +173,17 @@ CaptureController.prototype.startRecording = function () {
     stream = _comp.captureStream ? _comp.captureStream(30) : _comp.mozCaptureStream(30);
   } catch (e) { alert('captureStream not supported.'); this.startBgLoop(); return; }
 
-  var types = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-  var mime = '';
-  for (var i = 0; i < types.length; i++) {
-    try { if (MediaRecorder.isTypeSupported(types[i])) { mime = types[i]; break; } } catch(e) {}
-  }
+  var types = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=avc1','video/mp4'];
+  // Use the iOS compat helper if present (iosAR.html injects it); it puts
+  // mp4 ahead of webm on Safari. Fall back to iterating candidates ourselves.
+  var mime = (typeof window.AR_getBestMimeType === 'function')
+    ? window.AR_getBestMimeType()
+    : (function () {
+        for (var i = 0; i < types.length; i++) {
+          try { if (MediaRecorder.isTypeSupported(types[i])) return types[i]; } catch(e) {}
+        }
+        return '';
+      })();
 
   var rec;
   try { rec = new MediaRecorder(stream, mime ? { mimeType: mime } : {}); }
