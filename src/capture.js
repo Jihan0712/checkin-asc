@@ -80,16 +80,17 @@ function _drawFrame() {
   //   are unflipped → flip both to match what's on screen.
 
   if (_facing === 'environment') {
-    // Back camera: the AR container has CSS scaleX(-1) applied visually.
-    // The raw video pixels and GL pixels are unflipped, but the user sees them
-    // flipped on screen. To match the live preview (including the pre-flipped
-    // back emote assets which are designed to look correct after the CSS flip),
-    // we must apply the same horizontal flip in our composite.
-    _ctx.save();
-    _ctx.translate(w, 0); _ctx.scale(-1, 1);
+    // Back camera: raw video pixels are unflipped — draw straight.
+    // GL is mirrored internally by MindAR (to compensate for CSS scaleX(-1)),
+    // so flip it back. The back_bee/back_jolli textures are pre-mirrored,
+    // so after the flip they appear correct.
     if (video && video.readyState >= 2) { _drawCover(video, 0, 0, w, h); }
-    if (gl) { _ctx.drawImage(gl, 0, 0, w, h); }
-    _ctx.restore();
+    if (gl) {
+      _ctx.save();
+      _ctx.translate(w, 0); _ctx.scale(-1, 1);
+      _ctx.drawImage(gl, 0, 0, w, h);
+      _ctx.restore();
+    }
   } else {
     // Front camera: MindAR mirrors the emote in GL space for selfie view.
     // Flip the video to match so both layers are consistently mirrored.
