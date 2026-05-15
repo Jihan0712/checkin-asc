@@ -127,6 +127,71 @@ function _download(blob, ext) {
   setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
 }
 
+// ── FFmpeg (WebM → MP4 transcoder) ────────────────────────────────────────────
+
+var _ff = null;
+
+function _showProcessing(show) {
+  var el = document.getElementById('processing-overlay');
+  if (el) el.style.display = show ? 'flex' : 'none';
+}
+
+function _ensureFFmpeg() {
+  if (_ff) return Promise.resolve(_ff);
+  var ffInst;
+  return import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/esm/index.js')
+    .then(function (mod) {
+      ffInst = new mod.FFmpeg();
+      return import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    })
+    .then(function (utilMod) {
+      var base = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+      return Promise.all([
+        utilMod.toBlobURL(base + '/ffmpeg-core.js', 'text/javascript'),
+        utilMod.toBlobURL(base + '/ffmpeg-core.wasm', 'application/wasm')
+      ]);
+    })
+    .then(function (urls) {
+      return ffInst.load({ coreURL: urls[0], wasmURL: urls[1] });
+    })
+    .then(function () {
+      _ff = ffInst;
+      return _ff;
+    });
+}
+
+function _transcodeToMp4(webmBlob) {
+  var ffRef;
+  return _ensureFFmpeg()
+    .then(function (ff) {
+      ffRef = ff;
+      return import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    })
+    .then(function (utilMod) {
+      return utilMod.fetchFile(webmBlob);
+    })
+    .then(function (inputData) {
+      return ffRef.writeFile('in.webm', inputData);
+    })
+    .then(function () {
+      return ffRef.exec([
+        '-i', 'in.webm',
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-crf', '28',
+        '-movflags', '+faststart',
+        'out.mp4'
+      ]);
+    })
+    .then(function () {
+      return ffRef.readFile('out.mp4');
+    })
+    .then(function (data) {
+      try { ffRef.deleteFile('in.webm'); ffRef.deleteFile('out.mp4'); } catch (e) {}
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    });
+}
+
 // ── CaptureController ─────────────────────────────────────────────────────────
 
 function CaptureController() {
@@ -226,10 +291,30 @@ CaptureController.prototype.stopRecording = function () {
     setTimeout(function () {
       rec.onstop = function () {
         var mimeType = rec.mimeType || 'video/webm';
-        var ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-        _download(new Blob(self._chunks, { type: mimeType }), ext);
+        var rawBlob = new Blob(self._chunks, { type: mimeType });
         self._chunks = []; self._recorder = null;
-        self.startBgLoop(); // resume bg loop
+
+        if (mimeType.indexOf('mp4') !== -1) {
+          // Already MP4 (Safari/iOS) — download directly
+          _download(rawBlob, 'mp4');
+          self.startBgLoop();
+          return;
+        }
+
+        // Transcode WebM → MP4 via FFmpeg.wasm
+        _showProcessing(true);
+        _transcodeToMp4(rawBlob)
+          .then(function (mp4Blob) {
+            _showProcessing(false);
+            _download(mp4Blob, 'mp4');
+            self.startBgLoop();
+          })
+          .catch(function (err) {
+            console.error('FFmpeg transcode failed, saving as WebM:', err);
+            _showProcessing(false);
+            _download(rawBlob, 'webm');
+            self.startBgLoop();
+          });
       };
       rec.stop();
     }, 100);
