@@ -35,32 +35,15 @@
       })();
     </script>
 
-    <!-- A-Frame + MindAR must load before ar.js registers its component -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-    <script src="src/ar.js"></script>
-    <!-- In-app browser detection: social media apps block back-camera access -->
-    <script>
-      (function () {
-        var ua = navigator.userAgent || '';
-        if (/FBAN|FBAV|Instagram|Twitter\/|TikTok|Line\/|KAKAOTALK|Snapchat|Pinterest/i.test(ua)) {
-          document.addEventListener('DOMContentLoaded', function () {
-            var el = document.getElementById('inapp-warning');
-            if (el) el.style.display = 'flex';
-          });
-        }
-      })();
-    </script>
-  </head>
-  <body>
-    <!-- getUserMedia intercept: must run before MindAR touches the camera -->
+    <!-- getUserMedia intercept: placed before A-Frame/MindAR load and locked
+         with Object.defineProperty so neither library can overwrite it. -->
     <script>
       (function () {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-        var facing      = sessionStorage.getItem('cameraFacing')      || 'user';
+        var facing       = sessionStorage.getItem('cameraFacing')       || 'user';
         var backDeviceId = sessionStorage.getItem('backCameraDeviceId') || null;
         var _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-        navigator.mediaDevices.getUserMedia = function (constraints) {
+        var _patched = function (constraints) {
           if (constraints && constraints.video) {
             if (facing === 'environment' && backDeviceId) {
               // Use exact deviceId — bypasses facingMode entirely, most reliable on iOS
@@ -108,9 +91,38 @@
             throw err;
           });
         };
+        // Lock the patch — prevents MindAR/A-Frame from overwriting it later
+        try {
+          Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+            value: _patched,
+            writable: false,
+            configurable: false,
+            enumerable: true
+          });
+        } catch (e) {
+          navigator.mediaDevices.getUserMedia = _patched;
+        }
       })();
     </script>
 
+    <!-- A-Frame + MindAR must load before ar.js registers its component -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+    <script src="src/ar.js"></script>
+    <!-- In-app browser detection: social media apps block back-camera access -->
+    <script>
+      (function () {
+        var ua = navigator.userAgent || '';
+        if (/FBAN|FBAV|Instagram|Twitter\/|TikTok|Line\/|KAKAOTALK|Snapchat|Pinterest/i.test(ua)) {
+          document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('inapp-warning');
+            if (el) el.style.display = 'flex';
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
     <!-- Back-camera: mirror the AR container to display correctly on screen -->
     <script>
       (function () {
