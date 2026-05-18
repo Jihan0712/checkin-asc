@@ -100,6 +100,17 @@ function flashCapture() {
 cameraBtn.addEventListener('click', function () {
   var current = sessionStorage.getItem('cameraFacing') || 'user';
   sessionStorage.setItem('cameraFacing', current === 'user' ? 'environment' : 'user');
+
+  // iOS Safari holds the active camera track across reloads.
+  // Explicitly stop every video track so iOS fully releases the
+  // camera before the new page requests a different one.
+  document.querySelectorAll('video').forEach(function (v) {
+    if (v.srcObject) {
+      v.srcObject.getTracks().forEach(function (t) { t.stop(); });
+      v.srcObject = null;
+    }
+  });
+
   location.reload();
 });
 
