@@ -35,8 +35,8 @@
       })();
     </script>
 
-    <!-- getUserMedia intercept: placed before A-Frame/MindAR load and locked
-         with Object.defineProperty so neither library can overwrite it. -->
+    <!-- getUserMedia intercept: wraps navigator.mediaDevices in a Proxy so
+         our constraint injection can never be overwritten by any library. -->
     <script>
       (function () {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
@@ -91,16 +91,37 @@
             throw err;
           });
         };
-        // Lock the patch — prevents MindAR/A-Frame from overwriting it later
+        // Wrap navigator.mediaDevices in a Proxy — any read of .getUserMedia
+        // always returns _patched; any write to .getUserMedia is silently ignored.
         try {
-          Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
-            value: _patched,
-            writable: false,
-            configurable: false,
-            enumerable: true
+          var _proxy = new Proxy(navigator.mediaDevices, {
+            get: function (target, prop) {
+              if (prop === 'getUserMedia') return _patched;
+              var v = target[prop];
+              return typeof v === 'function' ? v.bind(target) : v;
+            },
+            set: function (target, prop, value) {
+              if (prop === 'getUserMedia') return true; // ignore overwrites
+              target[prop] = value;
+              return true;
+            }
+          });
+          Object.defineProperty(navigator, 'mediaDevices', {
+            get: function () { return _proxy; },
+            configurable: false
           });
         } catch (e) {
-          navigator.mediaDevices.getUserMedia = _patched;
+          // Fallback: lock directly on the instance
+          try {
+            Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+              value: _patched,
+              writable: false,
+              configurable: false,
+              enumerable: true
+            });
+          } catch (e2) {
+            navigator.mediaDevices.getUserMedia = _patched;
+          }
         }
       })();
     </script>
