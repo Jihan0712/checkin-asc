@@ -57,11 +57,20 @@
     <script>
       (function () {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-        var facing = sessionStorage.getItem('cameraFacing') || 'user';
+        var facing      = sessionStorage.getItem('cameraFacing')      || 'user';
+        var backDeviceId = sessionStorage.getItem('backCameraDeviceId') || null;
         var _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = function (constraints) {
           if (constraints && constraints.video) {
-            if (typeof constraints.video === 'object') {
+            if (facing === 'environment' && backDeviceId) {
+              // Use exact deviceId — bypasses facingMode entirely, most reliable on iOS
+              var vc = typeof constraints.video === 'object' ? constraints.video : {};
+              vc.deviceId = { exact: backDeviceId };
+              if (!vc.width)  vc.width  = { ideal: 1280 };
+              if (!vc.height) vc.height = { ideal: 720 };
+              delete vc.facingMode;
+              constraints.video = vc;
+            } else if (typeof constraints.video === 'object') {
               constraints.video.facingMode = facing === 'environment' ? { exact: 'environment' } : 'user';
               if (!constraints.video.width)  constraints.video.width  = { ideal: 1280 };
               if (!constraints.video.height) constraints.video.height = { ideal: 720 };
@@ -75,11 +84,12 @@
           }
           return _orig(constraints).catch(function (err) {
             console.error('[JollibeeAR] Camera error:', err.name, err.message);
-            // exact:environment rejected — retry with loose facingMode
-            if (err.name === 'OverconstrainedError' &&
-                constraints.video && constraints.video.facingMode &&
-                constraints.video.facingMode.exact === 'environment') {
-              constraints.video.facingMode = 'environment';
+            // deviceId or exact:environment rejected — retry with loose facingMode
+            if (err.name === 'OverconstrainedError' && constraints.video) {
+              var vc2 = typeof constraints.video === 'object' ? constraints.video : {};
+              delete vc2.deviceId;
+              vc2.facingMode = 'environment';
+              constraints.video = vc2;
               return _orig(constraints).catch(function (err2) {
                 console.error('[JollibeeAR] Camera retry error:', err2.name, err2.message);
                 if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError' || err2.name === 'SecurityError') {

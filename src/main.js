@@ -99,22 +99,46 @@ function flashCapture() {
 
 cameraBtn.addEventListener('click', function () {
   var current = sessionStorage.getItem('cameraFacing') || 'user';
-  sessionStorage.setItem('cameraFacing', current === 'user' ? 'environment' : 'user');
+  var next = current === 'user' ? 'environment' : 'user';
+  sessionStorage.setItem('cameraFacing', next);
 
-  // iOS Safari holds the active camera track across reloads.
-  // Explicitly stop every video track so iOS fully releases the
-  // camera before the new page requests a different one.
-  document.querySelectorAll('video').forEach(function (v) {
-    v.pause();
-    if (v.srcObject) {
-      v.srcObject.getTracks().forEach(function (t) { t.stop(); });
-      v.srcObject = null;
-    }
-  });
+  function _stopAndReload() {
+    document.querySelectorAll('video').forEach(function (v) {
+      v.pause();
+      if (v.srcObject) {
+        v.srcObject.getTracks().forEach(function (t) { t.stop(); });
+        v.srcObject = null;
+      }
+    });
+    // Give iOS 500ms to physically release the hardware camera lock.
+    setTimeout(function () { location.reload(); }, 500);
+  }
 
-  // Give iOS 500ms to physically release the hardware camera lock
-  // before the page unloads and re-requests a different camera.
-  setTimeout(function () { location.reload(); }, 500);
+  // While the front camera is still active iOS will expose device labels.
+  // Enumerate now to get the back camera's exact deviceId — using deviceId
+  // is far more reliable than facingMode: {exact:'environment'} on iOS Safari.
+  if (next === 'environment' && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    navigator.mediaDevices.enumerateDevices()
+      .then(function (devices) {
+        var videoInputs = devices.filter(function (d) { return d.kind === 'videoinput'; });
+        var backCam = videoInputs.find(function (d) {
+          return /back|rear|environment/i.test(d.label);
+        }) || videoInputs[videoInputs.length - 1]; // last device is usually back
+        if (backCam && backCam.deviceId) {
+          sessionStorage.setItem('backCameraDeviceId', backCam.deviceId);
+        } else {
+          sessionStorage.removeItem('backCameraDeviceId');
+        }
+        _stopAndReload();
+      })
+      .catch(function () {
+        sessionStorage.removeItem('backCameraDeviceId');
+        _stopAndReload();
+      });
+  } else {
+    sessionStorage.removeItem('backCameraDeviceId');
+    _stopAndReload();
+  }
 });
 
 // ── Share button ──────────────────────────────────────────────────────────────
