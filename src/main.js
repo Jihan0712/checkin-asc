@@ -105,6 +105,7 @@ cameraBtn.addEventListener('click', function () {
   // Explicitly stop every video track so iOS fully releases the
   // camera before the new page requests a different one.
   document.querySelectorAll('video').forEach(function (v) {
+    v.pause();
     if (v.srcObject) {
       v.srcObject.getTracks().forEach(function (t) { t.stop(); });
       v.srcObject = null;

@@ -78,7 +78,7 @@ a-scene {
   justify-content: center;
   pointer-events: none;
   z-index: 50;
-  transform: translateY(-200px);
+  transform: translateY(-250px);
 }
 #no-face img {
   width: 85%;
@@ -101,10 +101,35 @@ a-scene {
 }
 #face-guide img {
   width: 65%;
-  max-width: 300px;
+  max-width: 200px;
   height: auto;
   opacity: 0.8;
 }
+
+/* ── In-app browser warning ── */
+#inapp-warning {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.93);
+  z-index: 600;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  font-family: sans-serif;
+}
+.inapp-box {
+  background: #1c1c1e;
+  border-radius: 16px;
+  padding: 28px 24px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 320px;
+}
+.inapp-box p { margin: 0 0 14px; font-size: 0.98rem; }
+.inapp-box p:last-child { margin: 0; }
+.inapp-box strong { color: #e8251f; }
 
 /* ── Top bar ── */
 #top-bar {

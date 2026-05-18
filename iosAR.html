@@ -39,6 +39,18 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
     <script src="src/ar.js"></script>
+    <!-- In-app browser detection: social media apps block back-camera access -->
+    <script>
+      (function () {
+        var ua = navigator.userAgent || '';
+        if (/FBAN|FBAV|Instagram|Twitter\/|TikTok|Line\/|KAKAOTALK|Snapchat|Pinterest/i.test(ua)) {
+          document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('inapp-warning');
+            if (el) el.style.display = 'flex';
+          });
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- getUserMedia intercept: must run before MindAR touches the camera -->
@@ -63,6 +75,20 @@
           }
           return _orig(constraints).catch(function (err) {
             console.error('[JollibeeAR] Camera error:', err.name, err.message);
+            // exact:environment rejected — retry with loose facingMode
+            if (err.name === 'OverconstrainedError' &&
+                constraints.video && constraints.video.facingMode &&
+                constraints.video.facingMode.exact === 'environment') {
+              constraints.video.facingMode = 'environment';
+              return _orig(constraints).catch(function (err2) {
+                console.error('[JollibeeAR] Camera retry error:', err2.name, err2.message);
+                if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError' || err2.name === 'SecurityError') {
+                  var el2 = document.getElementById('camera-error');
+                  if (el2) el2.style.display = 'flex';
+                }
+                throw err2;
+              });
+            }
             if (err.name === 'NotAllowedError' ||
                 err.name === 'PermissionDeniedError' ||
                 err.name === 'SecurityError') {
@@ -86,6 +112,14 @@
         }
       })();
     </script>
+
+    <!-- Shown when opened inside a social media in-app browser -->
+    <div id="inapp-warning">
+      <div class="inapp-box">
+        <p>This experience requires Safari for camera access.</p>
+        <p>Tap <strong>⋯</strong> → <strong>Open in Safari</strong></p>
+      </div>
+    </div>
 
     <div id="top-bar">
       <img src="assets/header.png" alt="JollibeeAR" />
