@@ -50,12 +50,12 @@
         navigator.mediaDevices.getUserMedia = function (constraints) {
           if (constraints && constraints.video) {
             if (typeof constraints.video === 'object') {
-              constraints.video.facingMode = facing;
+              constraints.video.facingMode = facing === 'environment' ? { exact: 'environment' } : 'user';
               if (!constraints.video.width)  constraints.video.width  = { ideal: 1280 };
               if (!constraints.video.height) constraints.video.height = { ideal: 720 };
             } else {
               constraints.video = {
-                facingMode: facing,
+                facingMode: facing === 'environment' ? { exact: 'environment' } : 'user',
                 width:  { ideal: 1280 },
                 height: { ideal: 720 }
               };
