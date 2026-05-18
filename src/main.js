@@ -111,7 +111,9 @@ cameraBtn.addEventListener('click', function () {
     }
   });
 
-  location.reload();
+  // Give iOS 500ms to physically release the hardware camera lock
+  // before the page unloads and re-requests a different camera.
+  setTimeout(function () { location.reload(); }, 500);
 });
 
 // ── Share button ──────────────────────────────────────────────────────────────
