@@ -4,8 +4,13 @@
  */
 
 import { CaptureController } from './capture.js';
+import { syncQueue } from './checkinService.js';
 
 var capture = new CaptureController();
+// Attempt to sync any pending check‑ins on page load
+if (navigator.onLine) {
+  syncQueue();
+}
 var holdTimer = null;
 var isRecording = false;
 

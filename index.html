@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -66,8 +66,6 @@
               constraints.video = vc;
             } else if (typeof constraints.video === 'object') {
               constraints.video.facingMode = facing === 'environment' ? { exact: 'environment' } : 'user';
-              // Ideal 16:9 resolution so MindAR's projection calibrates
-              // consistently across browsers (Chrome may default to 4:3)
               if (!constraints.video.width)  constraints.video.width  = { ideal: 1280 };
               if (!constraints.video.height) constraints.video.height = { ideal: 720 };
             } else {
@@ -232,6 +230,10 @@
           <a-image id="bee-img"   src="#bee-tex"   position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="true"></a-image>
           <a-image id="jolli-img" src="#jolli-tex" position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="false"></a-image>
         </a-entity>
+        <!-- Calibration marker (simple red box) -->
+        <a-entity mindar-face-target="anchorIndex: 10">
+          <a-box color="red" depth="0.1" height="0.1" width="0.1" position="0 0.5 0"></a-box>
+        </a-entity>
 
         <!-- Smile landmark anchors -->
         <a-entity id="lm-61"  mindar-face-target="anchorIndex: 61"></a-entity>
@@ -265,6 +267,18 @@
       <div class="processing-box">
         <div class="processing-spinner"></div>
         <p>Processing video…</p>
+      </div>
+    </div>
+
+    <!-- Check‑in overlay (new) -->
+    <div id="checkin-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2>Check‑in Details</h2>
+        <img id="checkin-preview" src="" alt="Preview" style="max-width:100%;border:1px solid #ccc;margin-bottom:8px;"/>
+        <label for="checkin-name">Name:</label>
+        <input type="text" id="checkin-name" placeholder="Your name" />
+        <button id="checkin-submit">Submit Check‑in</button>
+        <button id="checkin-cancel" style="margin-left:8px;">Cancel</button>
       </div>
     </div>
 

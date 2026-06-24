@@ -326,3 +326,42 @@ canvas {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Check‑in overlay ── */
+#checkin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+}
+#checkin-overlay.hidden { display: none; }
+#checkin-overlay .overlay-content {
+  background: #111;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 90%;
+  color: #fff;
+  text-align: center;
+}
+#checkin-overlay .overlay-content h2 { margin-top: 0; }
+#checkin-overlay input {
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #222;
+  color: #fff;
+}
+#checkin-overlay button {
+  padding: 8px 16px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 4px;
+  background: #e8251f;
+  color: #fff;
+  cursor: pointer;
+}
