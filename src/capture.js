@@ -8,6 +8,8 @@
  *  - Buttons are DOM elements — never in the capture
  */
 
+import { AppState, showScreen } from './app.js';
+
 var _facing = sessionStorage.getItem('cameraFacing') || 'user';
 
 // Header preloaded once (crossOrigin prevents canvas taint on Chrome)
@@ -217,50 +219,19 @@ CaptureController.prototype.takePhoto = function () {
   // render, which would overwrite the GL buffer without MindAR's video pass.
   if (!_comp) return;
   _comp.toBlob(function (blob) {
-    if (blob) {
-      // Show preview and check‑in UI before downloading / registering
-      var previewImg = document.getElementById('checkin-preview');
-      var overlay = document.getElementById('checkin-overlay');
-      if (previewImg && overlay) {
-        var url = URL.createObjectURL(blob);
-        previewImg.src = url;
-        overlay.classList.remove('hidden');
-        // Hook up submit/cancel handlers (run once per photo)
-        var submitBtn = document.getElementById('checkin-submit');
-        var cancelBtn = document.getElementById('checkin-cancel');
-        var nameInput = document.getElementById('checkin-name');
-        var geoData = null;
-        // Try to get geolocation (optional, non‑blocking)
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(function (pos) {
-            geoData = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          }, function () { /* ignore errors */ });
-        }
-        var cleanup = function () {
-          overlay.classList.add('hidden');
-          URL.revokeObjectURL(url);
-          nameInput.value = '';
-          geoData = null;
-        };
-        submitBtn.onclick = function () {
-          // Register the check‑in with optional meta (name + location)
-          var meta = { name: nameInput.value.trim() };
-          if (geoData) Object.assign(meta, geoData);
-          try { registerCheckIn(blob, _facing, meta); } catch (e) { console.error('Check‑in registration failed:', e); }
-          _download(blob, 'jpg');
-          _showCheckInToast();
-          cleanup();
-        };
-        cancelBtn.onclick = function () {
-          cleanup();
-        };
-      } else {
-        // Fallback: just download & register silently
-        try { registerCheckIn(blob, _facing); } catch (e) { console.error('Check‑in registration failed:', e); }
-        _download(blob, 'jpg');
-        _showCheckInToast();
-      }
-    }
+    if (!blob) return;
+    if (AppState.capturedUrl) { URL.revokeObjectURL(AppState.capturedUrl); }
+    AppState.capturedBlob = blob;
+    AppState.capturedUrl  = URL.createObjectURL(blob);
+
+    var reviewImg  = document.getElementById('review-img');
+    var formThumb  = document.getElementById('form-thumb');
+    var confirmImg = document.getElementById('confirmation-img');
+    if (reviewImg)  reviewImg.src  = AppState.capturedUrl;
+    if (formThumb)  formThumb.src  = AppState.capturedUrl;
+    if (confirmImg) confirmImg.src = AppState.capturedUrl;
+
+    showScreen('review');
   }, 'image/jpeg', 0.92);
 };
 
@@ -363,30 +334,6 @@ CaptureController.prototype.stopRecording = function () {
     }, 100);
   }, 600);
 };
-
-import { register as registerCheckIn } from './checkinService.js';
-
-// Simple toast helper for check‑in confirmation
-function _showCheckInToast() {
-  let toast = document.getElementById('checkin-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'checkin-toast';
-    toast.style.position = 'fixed';
-    toast.style.bottom = '20px';
-    toast.style.left = '50%';
-    toast.style.transform = 'translateX(-50%)';
-    toast.style.padding = '8px 16px';
-    toast.style.background = 'rgba(0,0,0,0.7)';
-    toast.style.color = '#fff';
-    toast.style.borderRadius = '4px';
-    toast.style.zIndex = 10000;
-    document.body.appendChild(toast);
-  }
-  toast.textContent = 'Check‑in recorded';
-  toast.style.opacity = '1';
-  setTimeout(() => { toast.style.transition = 'opacity 0.5s'; toast.style.opacity = '0'; }, 2000);
-}
 
 export { CaptureController };
 
