@@ -155,135 +155,153 @@
     </script>
   </head>
   <body>
-    <!-- Back-camera: mirror the AR container to display correctly on screen -->
-    <script>
-      (function () {
-        if ((sessionStorage.getItem('cameraFacing') || 'user') === 'environment') {
-          document.addEventListener('DOMContentLoaded', function () {
-            var el = document.querySelector('.ar-container');
-            if (el) el.style.transform = 'scaleX(-1)';
-          });
-        }
-      })();
-    </script>
+  <script>
+    (function () {
+      if ((sessionStorage.getItem('cameraFacing') || 'user') === 'environment') {
+        document.addEventListener('DOMContentLoaded', function () {
+          var el = document.querySelector('.ar-container');
+          if (el) el.style.transform = 'scaleX(-1)';
+        });
+      }
+    })();
+  </script>
 
-    <!-- Shown when opened inside a social media in-app browser -->
-    <div id="inapp-warning">
-      <div class="inapp-box">
-        <p>This experience requires your device's browser for camera access.</p>
-        <p>Tap <strong>⋯</strong> or <strong>⋮</strong> → <strong>Open in Safari</strong> / <strong>Open in Browser</strong></p>
+  <div id="inapp-warning">
+    <div class="inapp-box">
+      <p>This experience requires your device's browser for camera access.</p>
+      <p>Tap <strong>⋯</strong> or <strong>⋮</strong> → <strong>Open in Safari</strong> / <strong>Open in Browser</strong></p>
+    </div>
+  </div>
+
+  <div id="camera-error">
+    <p>Camera access is required.<br>Please allow camera in your browser settings, then reload.</p>
+    <button onclick="location.reload()">Reload</button>
+  </div>
+
+  <!-- AR layer: always running behind all screens -->
+  <div class="ar-container">
+    <a-scene
+      mindar-face
+      speech-bubble
+      embedded
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true; alpha: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-assets>
+        <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
+      </a-assets>
+      <a-camera active="false" position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity mindar-face-target="anchorIndex: 168">
+        <a-gltf-model
+          mindar-face-occluder
+          position="0 -0.3 0.15"
+          rotation="0 0 0"
+          scale="0.065 0.065 0.065"
+          src="#headModel"
+        ></a-gltf-model>
+      </a-entity>
+      <a-entity id="anchor-168" mindar-face-target="anchorIndex: 168"></a-entity>
+    </a-scene>
+  </div>
+
+  <!-- Screen 1: Landing -->
+  <div id="screen-landing" class="screen screen--active">
+    <div class="landing">
+      <div class="landing__logo-wrap">
+        <img src="assets/icon.png" alt="ASC 50 Years" class="landing__logo" />
+      </div>
+      <h1 class="landing__title">COME, MAKI-ALAM AT<br><span>MAKIALAM!</span></h1>
+      <p class="landing__subtitle">An Advertising Self-Regulation Welcome Party</p>
+      <div class="landing__hashtag">#MaySayKaRito</div>
+      <p class="landing__cta">Complete your registration to receive your <strong>Welcome Passport.</strong></p>
+      <button id="btn-start" class="btn btn--primary">&#128247; START REGISTRATION</button>
+    </div>
+  </div>
+
+  <!-- Screen 2: Permission -->
+  <div id="screen-permission" class="screen">
+    <div class="permission__backdrop">
+      <div class="permission__modal">
+        <p>By continuing, you agree to our <a href="#">Privacy Policy</a> and consent to the use of your photo for this event.</p>
+        <button id="btn-accept" class="btn btn--primary">ACCEPT</button>
+        <button id="btn-cancel-permission" class="btn btn--secondary">CANCEL</button>
       </div>
     </div>
+  </div>
 
-    <div id="top-bar">
-      <img src="assets/header.png" alt="JollibeeAR" />
-    </div>
-
-    <div id="no-face">
-      <img src="assets/noface.png" alt="Smile ka na para lumabas ang WOW BIDA!" />
-    </div>
-
-    <div id="face-guide">
-      <img src="assets/faceshape.png" alt="" />
-    </div>
-
-    <!-- Shown when Chrome blocks camera access -->
-    <div id="camera-error">
-      <p>Camera access is required for this experience.<br>
-         Please allow camera in your browser settings, then reload.</p>
-      <button onclick="location.reload()">Reload</button>
-    </div>
-
-    <div class="ar-container">
-      <a-scene
-        mindar-face
-        emote-switcher
-        embedded
-        color-space="sRGB"
-        renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true; alpha: true"
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-      >
-        <a-assets>
-          <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
-          <img id="bee-tex"        src="assets/emotes/bee.png" />
-          <img id="jolli-tex"      src="assets/emotes/Jolli.png" />
-          <img id="back-bee-tex"   src="assets/emotes/back_bee.png" />
-          <img id="back-jolli-tex" src="assets/emotes/back_jolli.png" />
-        </a-assets>
-
-        <a-camera active="false" position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <!-- Head occluder anchor -->
-        <a-entity mindar-face-target="anchorIndex: 168">
-          <a-gltf-model
-            mindar-face-occluder
-            position="0 -0.3 0.15"
-            rotation="0 0 0"
-            scale="0.065 0.065 0.065"
-            src="#headModel"
-          ></a-gltf-model>
-        </a-entity>
-
-        <!-- Emote anchor -->
-        <a-entity id="anchor-168" mindar-face-target="anchorIndex: 168">
-          <a-image id="bee-img"   src="#bee-tex"   position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="true"></a-image>
-          <a-image id="jolli-img" src="#jolli-tex" position="0 0.7 0" width="1.2" height="1.2" transparent="true" visible="false"></a-image>
-        </a-entity>
-        <!-- Calibration marker (simple red box) -->
-        <a-entity mindar-face-target="anchorIndex: 10">
-          <a-box color="red" depth="0.1" height="0.1" width="0.1" position="0 0.5 0"></a-box>
-        </a-entity>
-
-        <!-- Smile landmark anchors -->
-        <a-entity id="lm-61"  mindar-face-target="anchorIndex: 61"></a-entity>
-        <a-entity id="lm-291" mindar-face-target="anchorIndex: 291"></a-entity>
-        <a-entity id="lm-13"  mindar-face-target="anchorIndex: 13"></a-entity>
-        <a-entity id="lm-14"  mindar-face-target="anchorIndex: 14"></a-entity>
-      </a-scene>
-    </div>
-
+  <!-- Screen 3: AR Camera -->
+  <div id="screen-camera" class="screen screen--camera">
+    <p class="camera__hint">Choose a filter, then tap the camera button.</p>
+    <div id="org-filter-row"></div>
     <div id="bottom-bar">
-      <button class="bar-btn" id="camera-btn" title="Switch camera">
+      <button id="camera-btn" class="bar-btn" title="Switch camera">
         <img src="assets/change-camera.png" alt="Switch camera" />
       </button>
       <div id="capture-wrap">
-        <button id="capture-btn" title="Tap for photo, Hold for video">
+        <button id="capture-btn" title="Take photo">
           <img src="assets/capture-button.png" alt="Capture" id="capture-inner" />
         </button>
         <div id="rec-badge">&#9679; REC</div>
       </div>
-      <button class="bar-btn" id="share-btn" title="Share">
-        <img src="assets/share-button.png" alt="Share" />
-      </button>
+      <div class="bar-btn bar-btn--spacer"></div>
     </div>
+  </div>
 
-    <div id="share-overlay">
-      <img src="assets/share.png" alt="Share - WOW BIDA!" />
-      <button id="share-close">&#x2715;</button>
-    </div>
-
-    <div id="processing-overlay">
-      <div class="processing-box">
-        <div class="processing-spinner"></div>
-        <p>Processing video…</p>
+  <!-- Screen 4: Photo Review -->
+  <div id="screen-review" class="screen">
+    <div class="review">
+      <div class="review__photo-wrap">
+        <img id="review-img" src="" alt="Your selfie" />
+      </div>
+      <div class="review__actions">
+        <button id="btn-use-photo" class="btn btn--primary">USE PHOTO</button>
+        <button id="btn-retake" class="btn btn--secondary">RETAKE</button>
+        <button id="btn-download" class="btn btn--ghost">&#x2B07; DOWNLOAD PHOTO</button>
+        <button id="btn-share" class="btn btn--ghost">&#8599; SHARE</button>
       </div>
     </div>
+  </div>
 
-    <!-- Check‑in overlay (new) -->
-    <div id="checkin-overlay" class="overlay hidden">
-      <div class="overlay-content">
-        <h2>Check‑in Details</h2>
-        <img id="checkin-preview" src="" alt="Preview" style="max-width:100%;border:1px solid #ccc;margin-bottom:8px;"/>
-        <label for="checkin-name">Name:</label>
-        <input type="text" id="checkin-name" placeholder="Your name" />
-        <button id="checkin-submit">Submit Check‑in</button>
-        <button id="checkin-cancel" style="margin-left:8px;">Cancel</button>
-      </div>
+  <!-- Screen 5: Registration Form -->
+  <div id="screen-form" class="screen">
+    <div class="form-screen">
+      <img id="form-thumb" src="" alt="" class="form-screen__thumb" />
+      <h2 class="form-screen__heading">Complete your registration</h2>
+      <form id="registration-form" novalidate>
+        <input id="field-firstname" type="text"  placeholder="FIRST NAME"    autocomplete="given-name" />
+        <input id="field-lastname"  type="text"  placeholder="LAST NAME"     autocomplete="family-name" />
+        <input id="field-email"     type="email" placeholder="EMAIL ADDRESS" autocomplete="email" />
+        <input id="field-company"   type="text"  placeholder="COMPANY"       autocomplete="organization" />
+        <p id="form-error" class="form-screen__error"></p>
+        <button type="submit" id="btn-submit" class="btn btn--primary">SUBMIT</button>
+        <button type="button" id="btn-go-back" class="btn btn--secondary">GO BACK</button>
+      </form>
+      <p class="form-screen__privacy">Your details and selfie will only be used for event registration and Welcome Passport issuance.</p>
     </div>
+  </div>
 
-    <script type="module" src="src/main.js"></script>
+  <!-- Screen 6: Confirmation -->
+  <div id="screen-confirmation" class="screen">
+    <div class="confirmation">
+      <div class="confirmation__banner">Show this screen to the organizer to claim your <strong>Welcome Passport.</strong></div>
+      <div class="confirmation__photo-wrap">
+        <img id="confirmation-img" src="" alt="Your selfie" />
+      </div>
+      <p id="confirmation-name"    class="confirmation__name"></p>
+      <p id="confirmation-company" class="confirmation__company"></p>
+      <button id="btn-open-camera" class="btn btn--secondary">&#128247; OPEN CAMERA</button>
+    </div>
+  </div>
 
-    <!-- video muting handled by the createElement patch in <head> -->
-  </body>
+  <div id="processing-overlay">
+    <div class="processing-box">
+      <div class="processing-spinner"></div>
+      <p>Processing video…</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
 </html>
