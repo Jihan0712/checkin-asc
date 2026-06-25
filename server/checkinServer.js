@@ -15,7 +15,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // MongoDB connection – replace with your actual DB name if needed
-const MONGODB_URI = 'mongodb+srv://christianrylelegaspi_db_user:afLyEiLFdbz6iZvV@checkin-asc.puumhfv.mongodb.net/';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://christianrylelegaspi_db_user:afLyEiLFdbz6iZvV@checkin-asc.puumhfv.mongodb.net/';
 const DB_NAME = 'checkinDB'; // you can change this
 const COLLECTION = 'checkins';
 
