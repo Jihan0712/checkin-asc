@@ -25,7 +25,7 @@ export const submitToBackend = async (blob, facing, meta = {}) => {
   if (meta.latitude)  form.append('latitude',  meta.latitude);
   if (meta.longitude) form.append('longitude', meta.longitude);
 
-  const response = await fetch('http://localhost:3000/submit', { method: 'POST', body: form });
+  const response = await fetch('/api/submit', { method: 'POST', body: form });
   if (!response.ok) throw new Error('Submit failed: ' + response.status);
   return response.json();
 };

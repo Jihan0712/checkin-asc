@@ -23,9 +23,12 @@
   },
   "homepage": "https://github.com/Jihan0712/ARemote#readme",
   "dependencies": {
+    "busboy": "^1.6.0",
+    "mongodb": "^7.3.0"
+  },
+  "devDependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "mongodb": "^7.3.0",
     "multer": "^2.2.0"
   }
 }
