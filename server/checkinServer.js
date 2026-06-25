@@ -21,7 +21,7 @@ const COLLECTION = 'checkins';
 
 let dbClient;
 async function initDb() {
-  const client = new MongoClient(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+  const client = new MongoClient(MONGODB_URI);
   await client.connect();
   console.log('✅ Connected to MongoDB');
   dbClient = client.db(DB_NAME);
@@ -33,14 +33,18 @@ app.post('/submit', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const { facing, name, latitude, longitude } = req.body;
+    const { facing, firstName, lastName, email, company, latitude, longitude } = req.body;
     const doc = {
       _id: new ObjectId(),
       timestamp: new Date(),
       facing: facing || 'unknown',
-      name: name || null,
-      location: latitude && longitude ? { latitude: parseFloat(latitude), longitude: parseFloat(longitude) } : null,
-      // Store the image as a Buffer (you may later move to GridFS for large files)
+      firstName: firstName || null,
+      lastName: lastName || null,
+      email: email || null,
+      company: company || null,
+      location: latitude && longitude
+        ? { latitude: parseFloat(latitude), longitude: parseFloat(longitude) }
+        : null,
       image: req.file.buffer,
       mimeType: req.file.mimetype,
     };
